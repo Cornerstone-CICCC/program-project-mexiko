@@ -1,0 +1,36 @@
+import { Schema, model, Document } from "mongoose";
+
+export interface IChatRoom extends Document {
+  participants: Schema.Types.ObjectId[];
+  status: "active" | "expired" | "revealed" | "restricted";
+  consent: {
+    userA: boolean;
+    userB: boolean;
+  };
+  expiresAt: Date;
+  lastMessage?: string;
+}
+
+const ChatRoomSchema = new Schema<IChatRoom>(
+  {
+    participants: [{ type: Schema.Types.ObjectId, ref: "User", index: true }],
+    status: {
+      type: String,
+      enum: ["active", "expired", "revealed", "restricted"],
+      default: "active",
+    },
+    consent: {
+      userA: { type: Boolean, default: false },
+      userB: { type: Boolean, default: false },
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      index: { expireAfterSeconds: 0 },
+    },
+    lastMessage: { type: String },
+  },
+  { timestamps: true },
+);
+
+export const ChatRoom = model<IChatRoom>("ChatRoom", ChatRoomSchema);
