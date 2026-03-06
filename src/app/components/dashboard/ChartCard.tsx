@@ -1,10 +1,5 @@
-import { Card, Typography } from "antd";
-import {
-  RiseOutlined,
-  TeamOutlined,
-} from "@ant-design/icons";
-
-const { Title, Text } = Typography;
+import { Card } from "antd";
+import { RiseOutlined, TeamOutlined } from "@ant-design/icons";
 
 type ChartCardProps = {
   title: string;
@@ -28,7 +23,7 @@ export default function ChartCard({
 
   return (
     <Card
-      bordered={false}
+      variant="borderless"
       style={{
         borderRadius: 20,
         minHeight: 370,
@@ -49,8 +44,7 @@ export default function ChartCard({
         }}
       >
         <div>
-          <Title
-            level={3}
+          <h3
             style={{
               margin: 0,
               fontSize: 22,
@@ -58,18 +52,17 @@ export default function ChartCard({
             }}
           >
             {title}
-          </Title>
+          </h3>
 
-          <Text
+          <p
             style={{
+              margin: "6px 0 0",
               color: "#6b7280",
               fontSize: 16,
-              display: "inline-block",
-              marginTop: 6,
             }}
           >
             {subtitle}
-          </Text>
+          </p>
         </div>
 
         <div>{icon}</div>

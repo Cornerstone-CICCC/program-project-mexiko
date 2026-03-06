@@ -1,4 +1,4 @@
-import { Card, Space, Typography } from "antd";
+import { Card } from "antd";
 import {
   MessageOutlined,
   TeamOutlined,
@@ -8,8 +8,6 @@ import {
   ArrowDownOutlined,
 } from "@ant-design/icons";
 import type { DashboardStat } from "@/app/types/dashboard";
-
-const { Text, Title } = Typography;
 
 type StatCardProps = {
   stat: DashboardStat;
@@ -35,7 +33,7 @@ export default function StatCard({ stat }: StatCardProps) {
 
   return (
     <Card
-      bordered={false}
+      variant="borderless"
       style={{
         borderRadius: 20,
         boxShadow: "0 1px 2px rgba(16, 24, 40, 0.04)",
@@ -56,9 +54,11 @@ export default function StatCard({ stat }: StatCardProps) {
       >
         <div>{getIcon(stat.title)}</div>
 
-        <Space
-          size={4}
+        <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
             color: isUp ? "#16a34a" : "#ef4444",
             fontWeight: 600,
             fontSize: 14,
@@ -66,11 +66,10 @@ export default function StatCard({ stat }: StatCardProps) {
         >
           {isUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
           <span>{stat.change}</span>
-        </Space>
+        </div>
       </div>
 
-      <Title
-        level={2}
+      <h2
         style={{
           marginTop: 20,
           marginBottom: 4,
@@ -80,16 +79,17 @@ export default function StatCard({ stat }: StatCardProps) {
         }}
       >
         {stat.value.toLocaleString()}
-      </Title>
+      </h2>
 
-      <Text
+      <p
         style={{
+          margin: 0,
           color: "#6b7280",
           fontSize: 16,
         }}
       >
         {stat.title}
-      </Text>
+      </p>
     </Card>
   );
 }
