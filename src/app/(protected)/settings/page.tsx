@@ -2,10 +2,12 @@
 
 import { Card } from "antd";
 
-export default function AnalyticsPage() {
+export default function SettingsPage() {
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 24 }}>Analytics</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 24 }}>
+        Admin Settings
+      </h1>
 
       <Card
         variant="borderless"
@@ -13,7 +15,7 @@ export default function AnalyticsPage() {
           borderRadius: 16,
         }}
       >
-        <p>Analytics charts and growth metrics will appear here.</p>
+        <p>Admin configuration settings will appear here.</p>
       </Card>
     </div>
   );
