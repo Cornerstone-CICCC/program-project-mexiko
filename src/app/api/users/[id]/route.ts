@@ -2,16 +2,6 @@ import { connectDB } from "@/app/api/lib/mongodb";
 import { User } from "@/app/models/User";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import admin from "firebase-admin";
-
-async function isAdminRequest() {
-  const cookieStore = await cookies();
-  const currentUserId = cookieStore.get("user-login")?.value;
-  if (!currentUserId) return false;
-
-  const user = await User.findById(currentUserId);
-  return user?.isAdmin === true;
-}
 
 export async function GET(
   _: NextRequest,
@@ -40,29 +30,46 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!(await isAdminRequest())) {
-      return NextResponse.json(
-        { error: "Forbidden: Admins only" },
-        { status: 403 },
-      );
-    }
-
     const { id } = await params;
-    const { isAdmin } = await req.json();
+    const { userInfo } = await req.json();
     await connectDB();
 
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { $set: { isAdmin } },
-      { new: true },
-    );
+    const cookieStore = await cookies();
+    const currentUserId = cookieStore.get("user-login")?.value;
 
-    return NextResponse.json(updatedUser);
+    const user = await User.findById(id);
+    if (!user)
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const requester = await User.findById(currentUserId);
+    if (user._id.toString() !== currentUserId && !requester?.isAdmin) {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+
+    const allowedUpdates = [
+      "fullName",
+      "bio",
+      "mbtiType",
+      "keywords",
+      "hobbies",
+      "profileImage",
+      "subImages",
+    ];
+    const updates = Object.keys(userInfo);
+
+    updates.forEach((update) => {
+      if (allowedUpdates.includes(update)) {
+        (user as any)[update] = userInfo[update];
+      }
+    });
+
+    await user.save();
+    return NextResponse.json(user, { status: 201 });
   } catch (e: unknown) {
     const errorMessage =
       e instanceof Error ? e.message : "Internal Server Error";
@@ -75,12 +82,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!(await isAdminRequest())) {
-      return NextResponse.json(
-        { error: "Forbidden: Admins only" },
-        { status: 403 },
-      );
-    }
     await connectDB();
 
     const { id } = await params;

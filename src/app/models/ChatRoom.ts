@@ -2,6 +2,7 @@ import { Schema, model, Document } from "mongoose";
 
 export interface IChatRoom extends Document {
   participants: Schema.Types.ObjectId[];
+  matchId: Schema.Types.ObjectId;
   status: "active" | "expired" | "revealed" | "restricted";
   consent: {
     userA: boolean;
@@ -14,6 +15,11 @@ export interface IChatRoom extends Document {
 const ChatRoomSchema = new Schema<IChatRoom>(
   {
     participants: [{ type: Schema.Types.ObjectId, ref: "User", index: true }],
+    matchId: {
+      type: Schema.Types.ObjectId,
+      ref: "Match",
+      required: true,
+    },
     status: {
       type: String,
       enum: ["active", "expired", "revealed", "restricted"],
@@ -26,7 +32,6 @@ const ChatRoomSchema = new Schema<IChatRoom>(
     expiresAt: {
       type: Date,
       required: true,
-      index: { expireAfterSeconds: 0 },
     },
     lastMessage: { type: String },
   },

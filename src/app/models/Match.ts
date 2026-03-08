@@ -13,7 +13,7 @@ export interface IMatch extends Document {
   createdAt: Date;
 }
 
-const ReportSchema = new Schema<IMatch>(
+const MatchSchema = new Schema<IMatch>(
   {
     userId: {
       type: Schema.Types.ObjectId,
@@ -33,5 +33,5 @@ const ReportSchema = new Schema<IMatch>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-export const User: Model<IMatch> =
-  mongoose.models.User || mongoose.model<IMatch>("Match", ReportSchema);
+export const Match: Model<IMatch> =
+  mongoose.models.Match || mongoose.model<IMatch>("Match", MatchSchema);
