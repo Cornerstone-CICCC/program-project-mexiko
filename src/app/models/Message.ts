@@ -9,7 +9,7 @@ export interface IMessage extends Document {
   createdAt: Date;
 }
 
-const ReportSchema = new Schema<IMessage>(
+const MessageSchema = new Schema<IMessage>(
   {
     chatRoomId: {
       type: Schema.Types.ObjectId,
@@ -32,5 +32,5 @@ const ReportSchema = new Schema<IMessage>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-export const User: Model<IMessage> =
-  mongoose.models.User || mongoose.model<IMessage>("Message", ReportSchema);
+export const Message: Model<IMessage> =
+  mongoose.models.Message || mongoose.model<IMessage>("Message", MessageSchema);

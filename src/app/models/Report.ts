@@ -39,5 +39,5 @@ const ReportSchema = new Schema<IReport>(
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
-export const User: Model<IReport> =
-  mongoose.models.User || mongoose.model<IReport>("Report", ReportSchema);
+export const Report: Model<IReport> =
+  mongoose.models.Report || mongoose.model<IReport>("Report", ReportSchema);
