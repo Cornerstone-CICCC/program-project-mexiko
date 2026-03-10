@@ -31,7 +31,19 @@ export const updateUserInfo = async (
   id: string,
   updateData: Partial<IUser>,
 ) => {
-  return await User.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+  const allowedFields = ["fullName", "mbtiType", "bio", "hobbies"];
+  const filteredData = Object.keys(updateData)
+    .filter((key) => allowedFields.includes(key))
+    .reduce(
+      (obj, key) => ({ ...obj, [key]: updateData[key as keyof IUser] }),
+      {},
+    );
+
+  return await User.findByIdAndUpdate(
+    id,
+    { $set: filteredData },
+    { new: true },
+  );
 };
 
 export const updateAdminStatus = async (id: string, isAdmin: boolean) => {

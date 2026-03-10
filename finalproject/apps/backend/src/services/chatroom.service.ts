@@ -13,12 +13,33 @@ export const chatService = {
     if (!room) throw new Error("Access denied or not found");
 
     const messages = await Message.find({ chatRoomId: roomId })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 }) //Sort by latest
       .limit(50);
 
     return { room, messages };
   },
 
+  async createRoom(userId: string, targetId: string, matchId: string) {
+    const existingRoom = await ChatRoom.findOne({
+      participants: { $all: [userId, targetId] },
+    });
+
+    if (existingRoom) {
+      return existingRoom;
+    }
+
+    const newRoom = await ChatRoom.create({
+      participants: [userId, targetId],
+      matchId: matchId,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      lastMessage: "",
+      //updatedAt: new Date(),
+    });
+
+    return newRoom;
+  },
+
+  //text
   async sendMessage(
     roomId: string,
     senderId: string,
@@ -39,6 +60,7 @@ export const chatService = {
 
     return newMessage;
   },
+  // add media ( picture / voice)
 
   async deleteRoom(roomId: string, userId: string) {
     const room = await ChatRoom.findOneAndDelete({

@@ -26,16 +26,43 @@ export const getRoom = async (req: Request, res: Response) => {
   }
 };
 
+export const createRoom = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId as string;
+    const { targetId, matchId } = req.body;
+
+    const room = await chatService.createRoom(userId, targetId, matchId);
+
+    res.status(201).json({
+      message: "Chat room created successfully.",
+      data: room,
+    });
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : "Failed to create chat room.";
+    res.status(500).json({ error: message });
+  }
+};
+
+//message
 export const postMessage = async (req: Request, res: Response) => {
   try {
     const roomId = req.params.roomId as string;
     const { content, messageType } = req.body;
+
     const message = await chatService.sendMessage(
       roomId,
       req.userId!,
       content,
       messageType,
     );
+
+    const io = req.app.get("io");
+
+    if (io) {
+      io.to(roomId).emit("receive_message", message);
+    }
+
     res
       .status(201)
       .json({ message: "Message sent successfully.", data: message });
@@ -47,6 +74,7 @@ export const postMessage = async (req: Request, res: Response) => {
     res.status(500).json({ error: message });
   }
 };
+// add voice and picture send
 
 export const removeRoom = async (req: Request, res: Response) => {
   try {

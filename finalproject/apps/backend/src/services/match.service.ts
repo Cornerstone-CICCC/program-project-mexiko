@@ -16,6 +16,8 @@ export const getMatchingList = async (userId: string) => {
   const listWithSynergy = await Promise.all(
     matchingList.map(async (match: IMatch) => {
       const targetId = match.matchedUsers[0]?.targetId;
+      if (!targetId) return { ...match, synergyScore: 0 };
+
       const targetUser = await User.findById(targetId);
 
       const synergyScore = targetUser?.mbtiType
@@ -89,4 +91,44 @@ export const processMatchInteraction = async (
     });
   }
   return room._id;
+};
+
+//A batch job that automatically matches users once a day.
+export const generateDailyMatches = async () => {
+  const allUsers = await User.find({});
+
+  for (const user of allUsers) {
+    const existingMatch = await Match.findOne({ userId: user._id });
+    const excludedIds = existingMatch
+      ? existingMatch.matchedUsers.map((m) => m.targetId)
+      : [];
+
+    const targets = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: user._id, $nin: excludedIds },
+          mbtiType: { $exists: true },
+        },
+      },
+      { $sample: { size: 5 } },
+    ]);
+
+    if (targets.length > 0) {
+      const newMatches = targets.map((target) => ({
+        targetId: target._id,
+        synergyScore: calculateSynergy(user.mbtiType, target.mbtiType),
+        isOpened: false,
+      }));
+
+      await Match.findOneAndUpdate(
+        { userId: user._id },
+        {
+          $push: { matchedUsers: { $each: newMatches } },
+          $setOnInsert: { matchDate: new Date().toISOString() },
+        },
+        { upsert: true, new: true },
+      );
+    }
+  }
+  console.log("Daily 5 matches added to existing list.");
 };

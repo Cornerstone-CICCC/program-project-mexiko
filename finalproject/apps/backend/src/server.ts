@@ -3,6 +3,8 @@ import cors from "cors";
 import * as dotenv from "dotenv";
 import path from "path";
 import session from "express-session";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 import userRoter from "./routes/user.routes";
 import reportRouter from "./routes/report.routes";
@@ -11,9 +13,47 @@ import chatroomRouter from "./routes/chatroom.routes";
 import { connectDB } from "./config/mongodb";
 import dbTestRouter from "./routes/db-test.routes";
 
+// batch
+import cron from "node-cron";
+import { generateDailyMatches } from "./services/match.service";
+
+cron.schedule("0 8 * * *", async () => {
+  // matching starts at 8:00 a.m.
+  console.log("Batch process started: Generating daily matches.");
+  try {
+    await generateDailyMatches();
+  } catch (error) {
+    console.error("Failed to generate daily matches:", error);
+  }
+});
+
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const app = express();
+//socket code
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:8081",
+    methods: ["GET", "POST"],
+  },
+});
+
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
+    console.log(`User joined room: ${roomId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +74,7 @@ app.use(
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 },
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
   }),
 );
 
@@ -54,7 +94,7 @@ const startServer = async () => {
     console.log("Database connected successfully.");
 
     const PORT = process.env.PORT || 3500;
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
