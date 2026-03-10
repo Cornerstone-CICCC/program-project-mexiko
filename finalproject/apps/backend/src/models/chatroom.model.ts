@@ -39,7 +39,7 @@ const ChatRoomSchema = new Schema<IChatRoom>(
       type: Date,
       required: true,
     },
-    lastMessage: { type: String },
+    lastMessage: { type: String, default: "" },
   },
   {
     timestamps: true,

@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IReport extends Document {
-  reporterId: mongoose.Types.ObjectId;
-  targetId: mongoose.Types.ObjectId;
-  chatRoomId?: mongoose.Types.ObjectId;
+  reporterId: mongoose.Types.ObjectId | string;
+  targetId: mongoose.Types.ObjectId | string;
+  chatRoomId?: mongoose.Types.ObjectId | string;
   category: "Abuse" | "Harassment" | "FakeProfile" | "Spam" | "Other";
   description: string;
   evidenceImages: string[];
@@ -36,9 +36,7 @@ const ReportSchema = new Schema<IReport>(
     },
     adminAction: { type: String },
   },
-  {
-    timestamps: { createdAt: true, updatedAt: false },
-  },
+  { timestamps: { createdAt: true, updatedAt: false } },
 );
 
 export const Report: Model<IReport> = mongoose.model<IReport>(
