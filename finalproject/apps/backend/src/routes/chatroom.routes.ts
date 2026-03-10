@@ -12,4 +12,6 @@ router.post("/:roomId/messages", isAuthenticated, chatController.postMessage);
 
 router.delete("/:roomId", isAuthenticated, chatController.removeRoom);
 
+router.post("/", isAuthenticated, chatController.createRoom);
+
 export default router;

@@ -14,10 +14,14 @@ export const getReports = async (
     .sort({ createdAt: -1 });
 };
 
-export const createManyReports = async (reportItems: Partial<IReport>[]) => {
+export const createManyReports = async (
+  reportItems: Partial<IReport>[],
+  reporterId: string,
+) => {
   const data = reportItems.map((item) => ({
     ...item,
-    status: "Pending",
+    reporterId: new mongoose.Types.ObjectId(reporterId),
+    status: "Pending" as const,
     evidenceImages: item.evidenceImages || [],
   }));
   return await Report.insertMany(data);

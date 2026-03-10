@@ -4,7 +4,7 @@ import { isAuthenticated } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/:id", isAuthenticated, matchController.getMatches);
+router.get("/", isAuthenticated, matchController.getMatches);
 router.post("/", isAuthenticated, matchController.applyMatch);
 router.patch(
   "/:matchId",

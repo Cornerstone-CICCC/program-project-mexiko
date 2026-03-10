@@ -3,8 +3,7 @@ import * as matchService from "../services/match.service";
 
 export const getMatches = async (req: Request, res: Response) => {
   try {
-    const userId = req.params.id as string;
-    const list = await matchService.getMatchingList(userId);
+    const list = await matchService.getMatchingList(req.userId!);
     res.json({ data: list });
   } catch (e: unknown) {
     const message =
