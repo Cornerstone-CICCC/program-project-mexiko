@@ -4,7 +4,7 @@ import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import MatchesPage from './pages/MatchesPage';
 import ReportsPage from './pages/ReportsPage';
-import SettingsPage from './pages/SettingsPage';
+import SettingsPage from './pages/SettingsPages';
 
 const router = createBrowserRouter([
   {
