@@ -1,52 +1,100 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import { useEffect, useState } from 'react';
+import { getUsers } from '../services/userService';
+
+interface UserItem {
+  _id?: string;
+  id?: string;
+  username?: string;
+  name?: string;
+  email?: string;
+  mbti?: string;
+  isAdmin?: boolean;
+}
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [users, setUsers] = useState([]);
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getUsers();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError('Could not load users.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadUsers() {
-      const res = await api.get("/admin/users");
-      setUsers(res.data);
-    }
-
     loadUsers();
   }, []);
 
   return (
-    <div className="rounded-3xl border bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
+      <div className="mb-6">
+        <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-text-main)]">
+          Users Management
+        </h2>
+        <p className="mt-2 text-sm text-[var(--color-text-soft)]">
+          Search, review, and manage user accounts.
+        </p>
+      </div>
 
-      <h2 className="text-3xl font-bold mb-6">
-        Users Management
-      </h2>
+      {error ? (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      ) : null}
 
-      <table className="w-full">
+      {loading ? (
+        <div className="text-sm text-slate-500">Loading users...</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-slate-50">
+              <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">MBTI</th>
+                <th className="px-6 py-4">Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr
+                  key={user._id || user.id || user.email}
+                  className="border-t border-[var(--color-border)]"
+                >
+                  <td className="px-6 py-5 font-medium text-slate-800">
+                    {user.username || user.name || 'Unknown User'}
+                  </td>
+                  <td className="px-6 py-5 text-slate-600">{user.email || '-'}</td>
+                  <td className="px-6 py-5 text-slate-600">{user.mbti || '-'}</td>
+                  <td className="px-6 py-5 text-slate-600">
+                    {user.isAdmin ? 'Yes' : 'No'}
+                  </td>
+                </tr>
+              ))}
 
-        <thead className="border-b">
-          <tr className="text-left text-sm text-gray-500">
-            <th className="py-3">Name</th>
-            <th>Email</th>
-            <th>MBTI</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {users.map((user: any) => (
-            <tr key={user.id} className="border-b">
-
-              <td className="py-4">{user.name}</td>
-              <td>{user.email}</td>
-              <td>{user.mbti}</td>
-              <td>{user.status}</td>
-
-            </tr>
-          ))}
-        </tbody>
-
-      </table>
-
-    </div>
+              {!users.length ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-8 text-center text-sm text-slate-500"
+                  >
+                    No users found.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

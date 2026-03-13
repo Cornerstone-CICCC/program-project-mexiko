@@ -1,16 +1,16 @@
 import api from "./api";
 
-export const getDashboardStats = async () => {
-  const res = await api.get("/admin/dashboard/stats");
-  return res.data;
-};
+export async function getDashboardSummary() {
+  const response = await api.get("/dashboard/summary");
+  return response.data;
+}
 
-export const getRecentUsers = async () => {
-  const res = await api.get("/admin/users/recent");
-  return res.data;
-};
+export async function getRecentUsersPreview() {
+  const response = await api.get("/dashboard/recent-users");
+  return response.data;
+}
 
-export const getReports = async () => {
-  const res = await api.get("/admin/reports");
-  return res.data;
-};
+export async function getRecentReportsPreview() {
+  const response = await api.get("/dashboard/recent-reports");
+  return response.data;
+}

@@ -23,9 +23,9 @@ import {
   userGrowthData as fallbackUserGrowthData,
 } from '../data/dashboard';
 import {
-  getDashboardStats,
-  getRecentUsers,
-  getReports,
+  getDashboardSummary,
+  getRecentReportsPreview,
+  getRecentUsersPreview,
 } from '../services/dashboardService';
 import type {
   MatchSuccessItem,
@@ -54,45 +54,45 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
-        const [statsResponse, recentUsersResponse, reportsResponse] =
+        const [summaryResult, recentUsersResult, recentReportsResult] =
           await Promise.allSettled([
-            getDashboardStats(),
-            getRecentUsers(),
-            getReports(),
+            getDashboardSummary(),
+            getRecentUsersPreview(),
+            getRecentReportsPreview(),
           ]);
 
-        if (statsResponse.status === 'fulfilled' && statsResponse.value) {
-          const dashboardData = statsResponse.value;
+        if (summaryResult.status === 'fulfilled' && summaryResult.value) {
+          const summary = summaryResult.value;
 
-          if (dashboardData.stats) {
-            setStats(dashboardData.stats);
+          if (Array.isArray(summary.stats)) {
+            setStats(summary.stats);
           }
 
-          if (dashboardData.matchSuccessData) {
-            setMatchSuccessChartData(dashboardData.matchSuccessData);
+          if (Array.isArray(summary.matchSuccessData)) {
+            setMatchSuccessChartData(summary.matchSuccessData);
           }
 
-          if (dashboardData.userGrowthData) {
-            setUserGrowthChartData(dashboardData.userGrowthData);
+          if (Array.isArray(summary.userGrowthData)) {
+            setUserGrowthChartData(summary.userGrowthData);
           }
         }
 
         if (
-          recentUsersResponse.status === 'fulfilled' &&
-          Array.isArray(recentUsersResponse.value)
+          recentUsersResult.status === 'fulfilled' &&
+          Array.isArray(recentUsersResult.value)
         ) {
-          setRecentUsers(recentUsersResponse.value);
+          setRecentUsers(recentUsersResult.value);
         }
 
         if (
-          reportsResponse.status === 'fulfilled' &&
-          Array.isArray(reportsResponse.value)
+          recentReportsResult.status === 'fulfilled' &&
+          Array.isArray(recentReportsResult.value)
         ) {
-          setReportManagement(reportsResponse.value);
+          setReportManagement(recentReportsResult.value);
         }
       } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-        setError('Could not load live dashboard data. Showing mock data instead.');
+        console.error(err);
+        setError('Could not load live dashboard data. Showing fallback data.');
       } finally {
         setLoading(false);
       }
