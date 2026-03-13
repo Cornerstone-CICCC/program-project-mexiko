@@ -1,6 +1,6 @@
 import { Layout } from "antd";
 import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
+import Topbar from "./TopBar";
 
 const { Sider, Content } = Layout;
 
