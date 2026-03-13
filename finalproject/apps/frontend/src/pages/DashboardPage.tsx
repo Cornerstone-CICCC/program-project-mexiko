@@ -1,10 +1,14 @@
+import StatCard from '../components/dashboard/StatCard';
+import { stats } from '../data/dashboard';
+
 export default function DashboardPage() {
-    return (
-      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Dashboard</h2>
-        <p className="mt-2 text-sm text-[var(--color-text-soft)]">
-          Dashboard widgets will be added in the next commit.
-        </p>
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-6">
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => (
+          <StatCard key={item.title} item={item} />
+        ))}
+      </section>
+    </div>
+  );
+}
