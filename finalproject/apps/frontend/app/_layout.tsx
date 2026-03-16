@@ -6,11 +6,10 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-
 import { useColorScheme } from "@/hooks/use-color-scheme";
-
+import "./global.css"
 export const unstable_settings = {
-  anchor: "(dashboard)", //Set the default page when the app launches
+  anchor: "(auth)", //Set the default page when the app launches
 };
 
 export default function RootLayout() {
@@ -19,8 +18,8 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
         <Stack.Screen name="(mbti-check)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
