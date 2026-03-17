@@ -1,0 +1,148 @@
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { Link, router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+
+export default function Login() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  return (
+    <ScrollView className="flex-1 bg-purple-700">
+      <View className="flex-1 items-center justify-center px-6 py-10">
+        
+        <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
+
+          {/* Botón de regreso */}
+          <TouchableOpacity 
+            onPress={() => router.push('/')} 
+            className="absolute left-4 top-4 z-10"
+          >
+            <Feather name="arrow-left" size={24} color="#4B5563" />
+          </TouchableOpacity>
+
+          <Text className="text-gray-900 text-2xl font-bold text-center mt-6">
+            Welcome Back
+          </Text>
+
+          <Text className="text-gray-500 mt-2 text-sm text-center">
+            Continue your intentional connection journey.
+          </Text>
+
+          <View className="w-full mt-8 gap-4">
+
+            {/* Email */}
+            <View className="gap-1">
+              <Text className="text-gray-700 text-sm ml-1">Email</Text>
+
+              <View className="relative">
+                <View className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <Feather name="mail" size={20} color="#9CA3AF" />
+                </View>
+
+                <TextInput
+                  placeholder="your.email@example.com"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 text-gray-900"
+                />
+              </View>
+            </View>
+
+            {/* Password */}
+            <View className="gap-1">
+              <Text className="text-gray-700 text-sm ml-1">Password</Text>
+
+              <View className="relative">
+                <View className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <Feather name="lock" size={20} color="#9CA3AF" />
+                </View>
+
+                <TextInput
+                  placeholder="********"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry={!showPassword}
+                  className="w-full pl-11 pr-11 py-3 rounded-xl bg-gray-100 text-gray-900"
+                />
+
+                {/* Toggle Password */}
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <Feather 
+                    name={showPassword ? "eye-off" : "eye"} 
+                    size={20} 
+                    color="#6B7280" 
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Remember Me y Forgot Password */}
+            <View className="flex-row items-center justify-between mt-1">
+              <TouchableOpacity 
+                onPress={() => setRememberMe(!rememberMe)}
+                className="flex-row items-center gap-2"
+              >
+                <View className={`w-4 h-4 border rounded ${
+                  rememberMe 
+                    ? 'bg-purple-600 border-purple-600' 
+                    : 'border-gray-300 bg-white'
+                }`}>
+                  {rememberMe && (
+                    <Feather name="check" size={12} color="white" style={{ alignSelf: 'center' }} />
+                  )}
+                </View>
+                <Text className="text-gray-600 text-sm">Remember me</Text>
+              </TouchableOpacity>
+
+              <Link href="/forgotPassword" asChild>
+                <TouchableOpacity>
+                  <Text className="text-purple-600 text-sm font-medium">
+                    Forgot Password?
+                  </Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+
+            {/* Botón de Login */}
+            <LinearGradient
+                colors={['#6A11CB', '#2575FC']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                className="w-full rounded-xl shadow-md mt-4"
+                >
+                <TouchableOpacity 
+                    className="w-full py-3"
+                    activeOpacity={0.8}
+                >
+                    <Text className="text-white font-semibold text-center">
+                    Log In
+                    </Text>
+                </TouchableOpacity>
+            </LinearGradient>
+
+          </View>
+
+          {/* Enlace a Sign Up */}
+          <View className="flex-row justify-center items-center mt-4">
+            <Text className="text-gray-600 text-sm">
+              Don't have an account?{' '}
+            </Text>
+            <Link href="/signUp" asChild>
+              <TouchableOpacity>
+                <Text className="text-purple-600 font-semibold">
+                  Sign Up
+                </Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
