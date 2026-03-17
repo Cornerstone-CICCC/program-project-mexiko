@@ -1,72 +1,105 @@
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Link } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Home() {
   return (
-    <View className="flex-1 items-center justify-center px-6 bg-purple-700">
-      
-      <View className="items-center gap-2">
-        <Image 
-          source={require('../../assets/images/logo.svg')} 
-          className="w-20 h-20"
-          resizeMode="contain"
-        />
-        <Text className="text-white text-sm opacity-80">
-          Connect Beyond the Surface
-        </Text>
-      </View>
+    <LinearGradient
+      colors={['#4A00E0', '#8E2DE2']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="flex-1"
+    >
+      {/* Contenedor principal con padding consistente */}
+      <View className="flex-1 items-center px-6 py-12">
+        
+        {/* Contenedor central que agrupa todo el contenido principal */}
+        <View className="flex-1 w-full max-w-sm justify-center">
+          
+          {/* Logo y eslogan */}
+          <View className="items-center gap-3 mb-8">
+            <Image 
+              source={require('../../assets/images/logo.svg')} 
+              className="w-24 h-24"
+              resizeMode="contain"
+            />
 
-      <Text className="text-white text-2xl font-bold mt-10 text-center">
-        Discover Your Personality Connection
-      </Text>
+            <Text className="text-white text-3xl font-bold tracking-tight">
+                MindMatch
+            </Text>
 
-      <Text className="text-white/80 mt-3 text-sm text-center">
-        Find meaningful relationships based on MBTI compatibility. Because
-        understanding each other starts with understanding yourself.
-      </Text>
+            <Text className="text-white/80 text-sm tracking-wider">
+              Connect Beyond the Surface
+            </Text>
+          </View>
 
-      <View className="gap-3 w-full mt-10">
-        <Link href="/signUp" asChild>
-          <TouchableOpacity 
-            className="w-full py-3 bg-white rounded-xl shadow-md active:bg-gray-100"
-          >
-            <Text className="text-purple-700 font-semibold text-center">
-              Get Started
+          {/* Imagen central */}
+          <View className="items-center justify-center mb-6">
+            <Image 
+              source={require('../../assets/images/discover.svg')} 
+              className="w-32 h-32"
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Textos principales */}
+          <View className="gap-4">
+            <Text className="text-white text-3xl font-bold text-center leading-tight">
+              Discover Your{'\n'}Personality Connection
+            </Text>
+
+            <Text className="text-white/70 text-base text-center leading-relaxed">
+              Find meaningful relationships based on MBTI compatibility. Because
+              understanding each other starts with understanding yourself.
+            </Text>
+          </View>
+
+          {/* Botones */}
+          <View className="w-full items-center gap-3 mt-10">
+            <Link href="/signUp" asChild>
+              <TouchableOpacity 
+                className="w-full py-4 bg-white rounded-2xl shadow-lg active:bg-gray-100"
+              >
+                <Text className="text-purple-700 font-bold text-center text-lg">
+                  Get Started
+                </Text>
+              </TouchableOpacity>
+            </Link>
+
+            <Link href="/login" asChild>
+              <TouchableOpacity 
+                className="w-full py-4 border-2 border-white/30 rounded-2xl active:bg-white/10"
+              >
+                <Text className="text-white font-bold text-center text-lg">
+                  Log In
+                </Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </View>
+
+        {/* Enlaces inferiores */}
+        <View className="w-full max-w-sm flex-row justify-between pt-4">
+          <TouchableOpacity className="active:opacity-70">
+            <Text className="text-white/60 text-sm font-medium">
+              Demo: MBTI Test
             </Text>
           </TouchableOpacity>
-        </Link>
-
-        <Link href="/login" asChild>
-          <TouchableOpacity 
-            className="w-full py-3 border border-white rounded-xl active:bg-white/10"
-          >
-            <Text className="text-white font-semibold text-center">
-              Log In
+          
+          <TouchableOpacity className="active:opacity-70">
+            <Text className="text-white/60 text-sm font-medium">
+              Tech Stack
             </Text>
           </TouchableOpacity>
-        </Link>
-      </View>
+          
+          <TouchableOpacity className="active:opacity-70">
+            <Text className="text-white/60 text-sm font-medium">
+              Admin
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <View className="flex-row gap-6 mt-12">
-        <TouchableOpacity className="active:opacity-70">
-          <Text className="text-white/70 text-sm hover:text-white">
-            Demo: MBTI Test
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity className="active:opacity-70">
-          <Text className="text-white/70 text-sm hover:text-white">
-            Tech Stack
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity className="active:opacity-70">
-          <Text className="text-white/70 text-sm hover:text-white">
-            Admin
-          </Text>
-        </TouchableOpacity>
       </View>
-
-    </View>
+    </LinearGradient>
   );
 }
