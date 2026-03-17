@@ -10,14 +10,12 @@ export default function SignUp() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Estados para los campos del formulario
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleCreateAccount = async () => {
-    // Validaciones básicas
     if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -36,13 +34,10 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      // Aquí iría tu llamada a la API para crear la cuenta
       console.log('Creating account with:', { name, email, password });
       
-      // Simular llamada a API
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Si la cuenta se crea exitosamente, navegar a la pantalla de verificación
       router.push({
         pathname: '/verifyEmail',
         params: { email: email }
@@ -61,7 +56,6 @@ export default function SignUp() {
         
         <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
 
-          {/* Botón de regreso al index */}
           <TouchableOpacity 
             onPress={() => router.push('/')}
             className="absolute left-4 top-4 z-10"
@@ -183,7 +177,6 @@ export default function SignUp() {
               </View>
             </View>
 
-            {/* Checkbox de Términos */}
             <TouchableOpacity 
               onPress={() => setTermsAccepted(!termsAccepted)}
               className="flex-row items-start gap-3 mt-2"
@@ -203,7 +196,6 @@ export default function SignUp() {
               </Text>
             </TouchableOpacity>
 
-            {/* Botón de Crear Cuenta con Gradient */}
             <LinearGradient
               colors={['#6A11CB', '#2575FC']}
               start={{ x: 0, y: 0 }}
@@ -232,7 +224,6 @@ export default function SignUp() {
             </LinearGradient>
           </View>
 
-          {/* Enlace a Login */}
           <View className="flex-row justify-center items-center mt-4">
             <Text className="text-gray-600 text-sm">
               Already have an account?{' '}

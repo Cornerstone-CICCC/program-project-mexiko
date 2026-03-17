@@ -14,7 +14,6 @@ export default function Login() {
         
         <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
 
-          {/* Botón de regreso */}
           <TouchableOpacity 
             onPress={() => router.push('/')} 
             className="absolute left-4 top-4 z-10"
@@ -81,7 +80,6 @@ export default function Login() {
               </View>
             </View>
 
-            {/* Remember Me y Forgot Password */}
             <View className="flex-row items-center justify-between mt-1">
               <TouchableOpacity 
                 onPress={() => setRememberMe(!rememberMe)}
@@ -108,7 +106,6 @@ export default function Login() {
               </Link>
             </View>
 
-            {/* Botón de Login */}
             <LinearGradient
                 colors={['#6A11CB', '#2575FC']}
                 start={{ x: 0, y: 0 }}
@@ -127,7 +124,6 @@ export default function Login() {
 
           </View>
 
-          {/* Enlace a Sign Up */}
           <View className="flex-row justify-center items-center mt-4">
             <Text className="text-gray-600 text-sm">
               Don't have an account?{' '}

@@ -33,7 +33,6 @@ export default function VerifyEmail() {
         
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
 
-          {/* Botón de regreso */}
           <TouchableOpacity 
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10"
@@ -41,7 +40,6 @@ export default function VerifyEmail() {
             <Feather name="arrow-left" size={24} color="#4B5563" />
           </TouchableOpacity>
 
-          {/* Icono de verificación */}
           <View className="items-center justify-center mt-6 mb-2">
             <Image 
                 source={require('../../assets/images/verifyEmail.svg')} 
@@ -65,7 +63,6 @@ export default function VerifyEmail() {
             </Text>
           </View>
 
-          {/* Lista de pasos */}
           <View className="mt-6 gap-2">
             <View className="flex-row items-center gap-2">
               <View className="w-5 h-5 rounded-full bg-purple-100 items-center justify-center">
@@ -134,7 +131,6 @@ export default function VerifyEmail() {
             </TouchableOpacity>
           </View>
 
-          {/* Enlace Back to Login */}
           <View className="mt-6 items-center">
             <Link href="/login" asChild>
               <TouchableOpacity>

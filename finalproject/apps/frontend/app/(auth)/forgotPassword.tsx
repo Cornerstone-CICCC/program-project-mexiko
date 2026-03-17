@@ -10,7 +10,6 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const handleSendResetLink = async () => {
-    // Validar email
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
       return;
@@ -25,7 +24,6 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // Aquí iría tu API call
       const response = await fetch('YOUR_API_URL/reset-password', {
         method: 'POST',
         headers: {
@@ -35,7 +33,6 @@ export default function ForgotPassword() {
       });
 
       if (response.ok) {
-        // Navegar a pantalla de confirmación
         router.push({
           pathname: '/resetConfirmation',
           params: { email: email }
@@ -59,7 +56,6 @@ export default function ForgotPassword() {
         
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
 
-          {/* Botón de regreso al login */}
           <TouchableOpacity 
             onPress={() => router.push('/login')}
             className="absolute left-4 top-4 z-10"
@@ -75,7 +71,6 @@ export default function ForgotPassword() {
             No worries! Enter your email and we'll send you a link to reset your password.
           </Text>
 
-          {/* Icono de email */}
           <View className="items-center justify-center mt-6 mb-2">
             <Image 
               source={require('../../assets/images/email.svg')} 
@@ -108,7 +103,6 @@ export default function ForgotPassword() {
               </View>
             </View>
 
-            {/* Botón de Send Reset Link */}
             <LinearGradient
                 colors={['#6A11CB', '#2575FC']}
                 start={{ x: 0, y: 0 }}
@@ -128,13 +122,11 @@ export default function ForgotPassword() {
             </LinearGradient>
           </View>
 
-          {/* Texto informativo */}
           <Text className="text-gray-500 text-xs mt-4 text-center leading-relaxed">
             If you don't see the email in your inbox, check your spam folder.{'\n'}
             The link will expire in 1 hour.
           </Text>
 
-          {/* Enlace de regreso al login */}
           <View className="mt-6 items-center">
             <Link href="/login" asChild>
               <TouchableOpacity>

@@ -7,13 +7,10 @@ export default function ResetConfirmation() {
   const userEmail = params.email || 'your.email@example.com';
 
   const handleResendEmail = () => {
-    // Aquí iría la lógica para reenviar el email
     console.log('Resending email to:', userEmail);
-    // Mostrar algún feedback al usuario
   };
 
   const handleTryAgain = () => {
-    // Volver a la página de forgot password
     router.push('/forgotPassword');
   };
 
@@ -23,7 +20,6 @@ export default function ResetConfirmation() {
         
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
 
-          {/* Botón de regreso */}
           <TouchableOpacity 
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10"
@@ -31,7 +27,6 @@ export default function ResetConfirmation() {
             <Feather name="arrow-left" size={24} color="#4B5563" />
           </TouchableOpacity>
 
-          {/* Icono de confirmación */}
           <View className="items-center justify-center mb-4 mt-8">
             <View className="w-28 h-28 bg-green-100 rounded-full items-center justify-center">
               <Feather name="check-circle" size={64} color="#10B981" />
@@ -65,7 +60,6 @@ export default function ResetConfirmation() {
 
           <View className="mt-6 gap-3">
 
-            {/* Botón Back to Login */}
             <Link href="/login" asChild>
               <TouchableOpacity 
                 className="w-full py-3 bg-purple-600 rounded-xl flex-row items-center justify-center gap-2"
@@ -78,7 +72,6 @@ export default function ResetConfirmation() {
               </TouchableOpacity>
             </Link>
 
-            {/* Botón Resend Email */}
             <TouchableOpacity 
               className="w-full py-3 border border-purple-600 rounded-xl"
               activeOpacity={0.8}
@@ -90,7 +83,6 @@ export default function ResetConfirmation() {
             </TouchableOpacity>
           </View>
 
-          {/* Temporizador opcional */}
           <Text className="text-gray-400 text-xs mt-6 text-center">
             The reset link will expire in 1 hour
           </Text>
