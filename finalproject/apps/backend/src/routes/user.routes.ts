@@ -18,4 +18,6 @@ router.patch("/:id/admin", isAdmin, userController.toggleAdmin);
 
 router.delete("/:id", isAdmin, userController.deleteUser);
 
+router.post("/dev", userController.createUserDev);
+
 export default router;

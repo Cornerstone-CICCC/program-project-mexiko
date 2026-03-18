@@ -1,13 +1,13 @@
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { Link } from 'expo-router';
+import { Button } from "@/components/Button";
+import { View, Text, TouchableOpacity, Image } from "react-native";
+import { Link } from "expo-router";
 
 export default function Home() {
   return (
     <View className="flex-1 items-center justify-center px-6 bg-purple-700">
-      
       <View className="items-center gap-2">
-        <Image 
-          source={require('../../assets/images/logo.svg')} 
+        <Image
+          source={require("../../assets/images/logo.svg")}
           className="w-20 h-20"
           resizeMode="contain"
         />
@@ -20,6 +20,10 @@ export default function Home() {
         Discover Your Personality Connection
       </Text>
 
+      <Link href="/(mbti-check)" push asChild>
+        <Button title="mbti TEst" />
+      </Link>
+
       <Text className="text-white/80 mt-3 text-sm text-center">
         Find meaningful relationships based on MBTI compatibility. Because
         understanding each other starts with understanding yourself.
@@ -27,9 +31,7 @@ export default function Home() {
 
       <View className="gap-3 w-full mt-10">
         <Link href="/signUp" asChild>
-          <TouchableOpacity 
-            className="w-full py-3 bg-white rounded-xl shadow-md active:bg-gray-100"
-          >
+          <TouchableOpacity className="w-full py-3 bg-white rounded-xl shadow-md active:bg-gray-100">
             <Text className="text-purple-700 font-semibold text-center">
               Get Started
             </Text>
@@ -37,12 +39,8 @@ export default function Home() {
         </Link>
 
         <Link href="/login" asChild>
-          <TouchableOpacity 
-            className="w-full py-3 border border-white rounded-xl active:bg-white/10"
-          >
-            <Text className="text-white font-semibold text-center">
-              Log In
-            </Text>
+          <TouchableOpacity className="w-full py-3 border border-white rounded-xl active:bg-white/10">
+            <Text className="text-white font-semibold text-center">Log In</Text>
           </TouchableOpacity>
         </Link>
       </View>
@@ -53,20 +51,17 @@ export default function Home() {
             Demo: MBTI Test
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity className="active:opacity-70">
           <Text className="text-white/70 text-sm hover:text-white">
             Tech Stack
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity className="active:opacity-70">
-          <Text className="text-white/70 text-sm hover:text-white">
-            Admin
-          </Text>
+          <Text className="text-white/70 text-sm hover:text-white">Admin</Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }

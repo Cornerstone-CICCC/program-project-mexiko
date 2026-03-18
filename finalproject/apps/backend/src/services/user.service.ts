@@ -1,6 +1,11 @@
 import { User, IUser } from "../models/user.model";
 import admin from "firebase-admin";
 
+// delete later
+export const createUserDirect = async (userInfo: Partial<IUser>) => {
+  return await User.create(userInfo);
+};
+
 export const verifyFirebaseToken = async (idToken: string) => {
   return await admin.auth().verifyIdToken(idToken);
 };
