@@ -1,6 +1,16 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
 
+// delete later
+export const createUserDev = async (req: Request, res: Response) => {
+  try {
+    const user = await userService.createUserDirect(req.body);
+    res.status(201).json(user);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const login = async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
