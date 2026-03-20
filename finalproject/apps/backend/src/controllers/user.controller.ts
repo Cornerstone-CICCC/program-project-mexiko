@@ -5,7 +5,23 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
     const decodedToken = await userService.verifyFirebaseToken(idToken);
-    const user = await userService.findUser(decodedToken.uid);
+    const email = decodedToken.email;
+    
+    
+    // Search for user by Firebase UID first (for users created after Firebase integration)
+    let user = await userService.findUser(decodedToken.uid);
+    
+    // If not found by UID, try email (for users created before Firebase integration)
+    if (!user && email) {
+      console.log('⚠️ Not found by UID, searching by email...');
+      user = await userService.findUserByEmail(email);
+      
+      if (user) {
+        console.log('✅ Linking user by email...');
+        user.firebaseUid = decodedToken.uid;
+        await user.save();
+      }
+    }
 
     if (!user) {
       return res.status(200).json({
@@ -35,17 +51,56 @@ export const logout = (_req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { userInfo, idToken } = req.body;
+    const { userInfo, idToken } = req.body;    
     const decodedToken = await userService.verifyFirebaseToken(idToken);
-    const newUser = await userService.createUser(userInfo, decodedToken);
-    res.status(201).json(newUser);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error ? e.message : "Failed to create user account.";
-    res.status(500).json({ error: message });
+    const email = decodedToken.email || userInfo.email;
+    
+    // find firebaseUid first
+    let user = await userService.findUser(decodedToken.uid);
+    
+    if (user) {
+      return res.status(200).json({
+        isNewUser: false,
+        user: user
+      });
+    }
+    
+    // If not found by UID, try email (for users created before Firebase integration)
+    user = await userService.findUserByEmail(email);
+    
+    if (user) {
+      
+      // Update existing user with firebaseUid
+      user.firebaseUid = decodedToken.uid;
+      await user.save();
+            
+      return res.status(200).json({
+        isNewUser: false,
+        user: user,
+        message: 'User found by email and linked to Firebase UID.'
+      });
+    }
+    
+    // If still not found, create new user
+    const newUser = await userService.createUser({
+      firebaseUid: decodedToken.uid,
+      email: email,
+      fullName: userInfo.fullName || {
+        first: userInfo.name || 'Usuario',
+        last: ''
+      }
+    });
+    
+    res.status(201).json({
+      isNewUser: true,
+      user: newUser
+    });
+    
+  } catch (error) {
+    console.error('❌ [SIGNUP] Error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Unknown error" });
   }
 };
-
 export const getUsers = async (_req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers();

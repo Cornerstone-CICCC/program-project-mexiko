@@ -1,31 +1,101 @@
-// verifyEmail.tsx
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+// frontend/app/(auth)/verifyEmail.tsx
+import { View, Text, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { auth } from '@/config/firebase'; // Importa auth
+import { sendEmailVerification } from '@/config/firebase';
 
 export default function VerifyEmail() {
   const params = useLocalSearchParams();
   const [userEmail] = useState(params.email || 'your.email@example.com');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingVerification, setCheckingVerification] = useState(false);
 
-  const handleVerificationComplete = () => {
-    router.push('/login');
+  // Función para verificar si el email ya fue verificado
+  const checkEmailVerified = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.reload(); // Recargar datos del usuario
+        return user.emailVerified;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      return false;
+    }
+  };
+
+  const handleVerificationComplete = async () => {
+    setCheckingVerification(true);
+    try {
+      const isVerified = await checkEmailVerified();
+      
+      if (isVerified) {
+        Alert.alert(
+          'Success!',
+          'Your email has been verified successfully.',
+          [
+            {
+              text: 'Continue',
+              onPress: () => router.push('/login')
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Not Verified Yet',
+          'Please check your email and click the verification link before continuing.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not verify email status. Please try again.');
+    } finally {
+      setCheckingVerification(false);
+    }
   };
 
   const handleResendEmail = async () => {
     setIsLoading(true);
     try {
-      console.log('Resending verification email to:', userEmail);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      alert('Verification email resent successfully!');
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        Alert.alert('Success', 'Verification email resent successfully!');
+      } else {
+        throw new Error('No user found');
+      }
     } catch (error) {
-      alert('Failed to resend verification email. Please try again.');
+      Alert.alert('Error', 'Failed to resend verification email. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Verificar automáticamente cada 5 segundos si el email fue verificado
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const isVerified = await checkEmailVerified();
+      if (isVerified) {
+        clearInterval(interval);
+        Alert.alert(
+          'Email Verified!',
+          'Your email has been verified. You can now continue.',
+          [
+            {
+              text: 'Continue',
+              onPress: () => router.push('/login')
+            }
+          ]
+        );
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <ScrollView className="flex-1 bg-purple-700">
@@ -82,7 +152,7 @@ export default function VerifyEmail() {
               <View className="w-5 h-5 rounded-full bg-purple-100 items-center justify-center">
                 <Text className="text-purple-600 text-xs font-bold">3</Text>
               </View>
-              <Text className="text-gray-700 text-sm">Return here to continue</Text>
+              <Text className="text-gray-700 text-sm">Return here and click verify</Text>
             </View>
           </View>
 
@@ -109,10 +179,11 @@ export default function VerifyEmail() {
                     className="w-full py-3"
                     activeOpacity={0.8}
                     onPress={handleVerificationComplete}
+                    disabled={checkingVerification}
                 >
-                    <Text className="text-white font-semibold text-center">
-                    I've Verified My Email
-                    </Text>
+                  <Text className="text-white font-semibold text-center">
+                    {checkingVerification ? 'Checking...' : "I've Verified My Email"}
+                  </Text>
                 </TouchableOpacity>
             </LinearGradient>
 

@@ -3,6 +3,7 @@ import { Link, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
+import authService from '@/services/auth.services';
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,44 +12,74 @@ export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   
   const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleCreateAccount = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+const handleCreateAccount = async () => {
+  
+  if (!name || !lastName || !email || !password || !confirmPassword) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
+
+  if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
-    }
+  }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
+  if (password !== confirmPassword) {
+    Alert.alert('Error', 'Passwords do not match');
+    return;
+  }
 
-    if (!termsAccepted) {
-      Alert.alert('Error', 'Please accept the Terms of Service and Privacy Policy');
-      return;
-    }
+  if (!termsAccepted) {
+    Alert.alert('Error', 'Please accept the Terms of Service and Privacy Policy');
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    try {
-      console.log('Creating account with:', { name, email, password });
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      router.push({
-        pathname: '/verifyEmail',
-        params: { email: email }
-      });
-      
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create account. Please try again.');
-    } finally {
-      setIsLoading(false);
+  try {
+    const response = await authService.signUp({
+      name,
+      lastName,
+      email,
+      password,
+    });
+
+    console.log('Sign up response:', response);
+    
+    if (response.isNewUser) {
+      // New user - account created successfully
+      Alert.alert(
+        '✅ Account Created',
+        `Your account has been created successfully!\n\n` +
+        `A verification email has been sent to:\n${email}\n\n` +
+        `Please check your inbox (and spam folder) and click the verification link.`,
+        [
+          {
+            text: 'Continue',
+            onPress: () => router.push({
+              pathname: '/verifyEmail',
+              params: { email: email }
+            })
+          }
+        ]
+      );
+    } else {
+      // Existing user - successful login
+      console.log('Existing user, redirecting...');
+      router.push('/login');
     }
-  };
+    
+  } catch (error: any) {
+    Alert.alert('Error', error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <ScrollView className="flex-1 bg-purple-700">
@@ -86,6 +117,25 @@ export default function SignUp() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Your name"
+                  placeholderTextColor="#9CA3AF"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 text-gray-900"
+                />
+              </View>
+            </View>
+
+            {/* Last name */}
+            <View className="gap-1">
+              <Text className="text-gray-700 text-sm ml-1">Last Name</Text>
+
+              <View className="relative">
+                <View className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+                  <Feather name="user" size={20} color="#9CA3AF" />
+                </View>
+
+                <TextInput
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Your last name"
                   placeholderTextColor="#9CA3AF"
                   className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 text-gray-900"
                 />

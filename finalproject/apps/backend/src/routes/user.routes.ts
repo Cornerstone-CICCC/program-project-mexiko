@@ -8,7 +8,9 @@ router.post("/login", userController.login);
 router.post("/signup", userController.signup);
 router.post("/logout", userController.logout);
 
-router.get("/", isAdmin, userController.getUsers);
+//router.get("/", isAdmin, userController.getUsers);
+router.get("/", userController.getUsers);
+
 
 router.get("/:id", userController.getUser);
 

@@ -1,12 +1,52 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'; // Añade ActivityIndicator
 import { Link, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import authService from '@/services/auth.services'; 
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      console.log('Attempting login with:', email);
+      
+      const response = await authService.login({
+        email,
+        password,
+      });
+
+      console.log('Login successful:', response);
+      
+      Alert.alert('Success', 'Login successful!', [
+        {
+          text: 'Continue',
+          onPress: () => router.push('/(dashboard)') 
+        }
+      ]);
+      
+    } catch (error: any) {
+      console.log('Error in login:', error.message);
+      
+      Alert.alert('Login Failed', error.message);
+      
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-purple-700">
@@ -41,6 +81,8 @@ export default function Login() {
                 </View>
 
                 <TextInput
+                  value={email} 
+                  onChangeText={setEmail}
                   placeholder="your.email@example.com"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="email-address"
@@ -60,6 +102,8 @@ export default function Login() {
                 </View>
 
                 <TextInput
+                  value={password} 
+                  onChangeText={setPassword} 
                   placeholder="********"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry={!showPassword}
@@ -115,10 +159,21 @@ export default function Login() {
                 <TouchableOpacity 
                     className="w-full py-3"
                     activeOpacity={0.8}
+                    onPress={handleLogin} 
+                    disabled={isLoading}
                 >
+                  {isLoading ? ( 
+                    <View className="flex-row items-center justify-center gap-2">
+                      <ActivityIndicator size="small" color="white" />
+                      <Text className="text-white font-semibold text-center">
+                        Logging in...
+                      </Text>
+                    </View>
+                  ) : (
                     <Text className="text-white font-semibold text-center">
-                    Log In
+                      Log In
                     </Text>
+                  )}
                 </TouchableOpacity>
             </LinearGradient>
 
