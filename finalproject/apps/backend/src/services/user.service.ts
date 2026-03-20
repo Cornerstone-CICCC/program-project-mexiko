@@ -7,7 +7,22 @@ export const createUserDirect = async (userInfo: Partial<IUser>) => {
 };
 
 export const verifyFirebaseToken = async (idToken: string) => {
-  return await admin.auth().verifyIdToken(idToken);
+  try {
+    console.log('🔵 [SERVICE] Verifying Firebase token...');
+    
+    // Verify that Firebase Admin is initialized
+    if (!admin.apps.length) {
+      throw new Error('Firebase Admin is not initialized. Please initialize it before calling this function.');
+    }
+    
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    console.log('✅ [SERVICE] Token verified for UID:', decodedToken.uid);
+    
+    return decodedToken;
+  } catch (error) {
+    console.error('❌ [SERVICE] Error verifying token:', error);
+    throw error;
+  }
 };
 
 export const findUser = async (idOrUid: string) => {
@@ -21,15 +36,40 @@ export const findUser = async (idOrUid: string) => {
 
 export const getAllUsers = async () => await User.find();
 
-export const createUser = async (
-  userInfo: Partial<IUser>,
-  decodedToken: admin.auth.DecodedIdToken,
-) => {
-  return await User.create({
-    ...userInfo,
-    firebaseUid: decodedToken.uid,
-    email: decodedToken.email,
-  });
+export const createUser = async (userData: any) => {
+  try {
+    console.log('🔵 [SERVICE] Creating user in MongoDB...');
+    
+    // Ensure fullName has the correct structure
+    const userToCreate = {
+      firebaseUid: userData.firebaseUid,
+      email: userData.email,
+      fullName: {
+        first: userData.fullName?.first || 'Usuario',
+        last: userData.fullName?.last || ''
+      },
+    };
+    
+    const newUser = new User(userToCreate);
+    const savedUser = await newUser.save();
+    
+    console.log('✅ [SERVICE] User created with ID:', savedUser._id);
+    return savedUser;
+    
+  } catch (error) {
+    console.error('❌ [SERVICE] Error creating user:', error);
+    throw error;
+  }
+};
+
+export const findUserByEmail = async (email: string) => {
+  try {
+    const user = await User.findOne({ email });
+    return user;
+  } catch (error) {
+    console.error('❌ [SERVICE] Error finding user by email:', error);
+    throw error;
+  }
 };
 
 export const updateUserInfo = async (
