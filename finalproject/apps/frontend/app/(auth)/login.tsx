@@ -4,6 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import authService from '@/services/auth.services'; 
+import Toast from 'react-native-toast-message';
+
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,41 +14,54 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
+
+
+const handleLogin = async () => {
     
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  if (!email || !password) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    try {
-      console.log('Attempting login with:', email);
-      
-      const response = await authService.login({
-        email,
-        password,
-      });
+  try {
+    console.log('Attempting login with:', email);
+    
+    const response = await authService.login({
+      email,
+      password,
+    });
 
-      console.log('Login successful:', response);
-      
-      Alert.alert('Success', 'Login successful!', [
-        {
-          text: 'Continue',
-          onPress: () => router.push('/(dashboard)') 
-        }
-      ]);
-      
-    } catch (error: any) {
-      console.log('Error in login:', error.message);
-      
-      Alert.alert('Login Failed', error.message);
-      
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    console.log('Login successful:', response);
+    
+    
+    Toast.show({
+      type: 'success',
+      text1: 'Welcome back! 👋',
+      text2: 'Login successful',
+      position: 'top',
+      visibilityTime: 2000,
+      autoHide: true,
+    });
+    
+    router.replace('/(mbti-check)');
+
+  } catch (error: any) {
+    console.log('Error in login:', error.message);
+    
+    Toast.show({
+      type: 'error',
+      text1: 'Login Failed',
+      text2: error.message,
+      position: 'top',
+      visibilityTime: 3000,
+    });
+    
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <ScrollView className="flex-1 bg-purple-700">
