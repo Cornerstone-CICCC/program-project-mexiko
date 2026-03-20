@@ -31,12 +31,13 @@ export default function Login() {
 
       console.log('Login successful:', response);
       
-      Alert.alert('Success', 'Login successful!', [
+     /* Alert.alert('Success', 'Login successful!', [
         {
           text: 'Continue',
-          onPress: () => router.push('/(dashboard)') 
+          onPress: () => router.replace('/(mbti-check)') 
         }
-      ]);
+      ]);*/
+      router.replace('/(mbti-check)'); // Redirige al dashboard después del login exitoso
       
     } catch (error: any) {
       console.log('Error in login:', error.message);
