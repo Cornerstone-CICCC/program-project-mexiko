@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { router } from "expo-router";
 import {
   Alert,
   SafeAreaView,
@@ -75,29 +76,24 @@ export default function MoreScreen() {
 
         <SectionTitle title="Privacy" />
         <SettingRow
-          label="Reports"
-          icon="flag-outline"
-          onPress={() => Alert.alert("Reports", "Open reports screen")}
-        />
-        <SettingRow
-          label="Blacklist"
-          icon="ban-outline"
-          onPress={() => Alert.alert("Blacklist", "Open blacklist screen")}
+          label="Privacy Settings"
+          icon="shield-outline"
+          onPress={() => router.push("/(more)/privacy")}
         />
 
         <SectionTitle title="About" />
         <SettingRow
-          label="Version"
+          label="About MindMatch"
           icon="information-circle-outline"
           rightText="v1.0.0"
-          onPress={() => Alert.alert("About", "App version details")}
+          onPress={() => router.push("/(more)/about")}
         />
 
         <SectionTitle title="Help" />
         <SettingRow
           label="Help Center"
           icon="help-circle-outline"
-          onPress={() => Alert.alert("Help", "Open help center")}
+          onPress={() => router.push("/(more)/help")}
         />
 
         <View style={styles.footer}>
