@@ -59,7 +59,7 @@ export default function MoreScreen() {
           onSwitchChange={setNewMessageAlerts}
         />
         <SettingRow
-          label="Do Not Disturb 23:00–07:00"
+          label="Do Not Disturb"
           icon="moon-outline"
           hasSwitch
           switchValue={doNotDisturb}
