@@ -11,7 +11,7 @@ import "./global.css";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
 
 export const unstable_settings = {
-  anchor: "(auth)",
+  anchor: "(tabs)",
 };
 
 export default function RootLayout() {
