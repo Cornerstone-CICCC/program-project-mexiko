@@ -24,6 +24,7 @@ export default function RootLayout() {
         <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
         <Stack.Screen name="(mbti-check)" options={{ headerShown: false }} />
         <Stack.Screen name="(matches)" options={{ headerShown: false }} />
+        <Stack.Screen name="(more)" options={{ headerShown: false }} />
       </Stack>
 
       <Toast />
