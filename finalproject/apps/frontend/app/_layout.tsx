@@ -7,10 +7,11 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import "./global.css"
+import "./global.css";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
+
 export const unstable_settings = {
-  anchor: "(auth)", //Set the default page when the app launches
+  anchor: "(auth)",
 };
 
 export default function RootLayout() {
@@ -22,8 +23,10 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
         <Stack.Screen name="(mbti-check)" options={{ headerShown: false }} />
+        <Stack.Screen name="(matches)" options={{ headerShown: false }} />
       </Stack>
-      <Toast></Toast>
+
+      <Toast />
       <StatusBar style="auto" />
     </ThemeProvider>
   );
