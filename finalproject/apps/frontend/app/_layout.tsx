@@ -11,7 +11,7 @@ import "./global.css";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
 
 export const unstable_settings = {
-  anchor: "(auth)",
+  anchor: "(tabs)",
 };
 
 export default function RootLayout() {
@@ -19,13 +19,15 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
-        <Stack.Screen name="(mbti-check)" options={{ headerShown: false }} />
-        <Stack.Screen name="(matches)" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(dashboard)" />
+        <Stack.Screen name="(mbti-check)" />
+        <Stack.Screen name="(matches)" />
+        <Stack.Screen name="(chat)" />
+        <Stack.Screen name="(more)" />
+        <Stack.Screen name="(tabs)" />
       </Stack>
-
       <Toast />
       <StatusBar style="auto" />
     </ThemeProvider>
