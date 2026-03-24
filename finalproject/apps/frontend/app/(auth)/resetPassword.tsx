@@ -1,3 +1,4 @@
+// app/(auth)/forgotPassword.tsx
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -23,7 +24,6 @@ export default function ForgotPassword() {
       return;
     }
 
-    // Validación de formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Toast.show({
@@ -39,26 +39,10 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // 🔥 MODIFICA ESTA PARTE 🔥
-      // Configuración para que el link abra tu app
-     const actionCodeSettings = {
-        // Usa tu dominio de Firebase Hosting
-        url: 'https://pc-final-project.web.app/reset-password',
-        handleCodeInApp: true,
-        iOS: {
-          bundleId: 'com.anonymous.frontend'
-        },
-        android: {
-          packageName: 'com.anonymous.frontend',
-          installApp: true,
-          minimumVersion: '12'
-        }
-      };
-
-      // Enviar email de reset con Firebase usando la configuración personalizada
-      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      // ✅ VERSIÓN SIMPLE - SIN CONFIGURACIÓN ADICIONAL
+      // Firebase usará su formulario por defecto
+      await sendPasswordResetEmail(auth, email);
       
-      // Mostrar mensaje de éxito
       Toast.show({
         type: 'success',
         text1: 'Email Sent! 📧',
@@ -67,7 +51,6 @@ export default function ForgotPassword() {
         visibilityTime: 3000,
       });
       
-      // Redirigir a login después de 2 segundos
       setTimeout(() => {
         router.push('/login');
       }, 2000);
@@ -77,7 +60,6 @@ export default function ForgotPassword() {
       
       let errorMessage = 'Failed to send reset link. Please try again.';
       
-      // Manejar errores específicos de Firebase
       switch (error.code) {
         case 'auth/user-not-found':
           errorMessage = 'No account found with this email address.';
@@ -87,9 +69,6 @@ export default function ForgotPassword() {
           break;
         case 'auth/too-many-requests':
           errorMessage = 'Too many requests. Please try again later.';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your connection.';
           break;
       }
       
@@ -111,7 +90,6 @@ export default function ForgotPassword() {
       <View className="flex-1 items-center justify-center px-6 py-10">
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
           
-          {/* Botón de retroceso */}
           <TouchableOpacity 
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10"
@@ -119,17 +97,14 @@ export default function ForgotPassword() {
             <Feather name="arrow-left" size={24} color="#4B5563" />
           </TouchableOpacity>
 
-          {/* Título */}
           <Text className="text-gray-900 text-2xl font-bold text-center mt-6">
             Forgot Password?
           </Text>
 
-          {/* Descripción */}
           <Text className="text-gray-500 mt-2 text-sm text-center">
             No worries! Enter your email and we'll send you a link to reset your password.
           </Text>
 
-          {/* Icono */}
           <View className="items-center justify-center mt-6 mb-2">
             <Image 
               source={require('../../assets/images/email.svg')} 
@@ -138,9 +113,7 @@ export default function ForgotPassword() {
             />
           </View>
           
-          {/* Formulario */}
           <View className="w-full mt-8 gap-4">
-            {/* Campo de Email */}
             <View className="gap-1">
               <Text className="text-gray-700 text-sm ml-1">Email Address</Text>
               <View className="relative">
@@ -160,7 +133,6 @@ export default function ForgotPassword() {
               </View>
             </View>
 
-            {/* Botón de enviar */}
             <LinearGradient
               colors={['#6A11CB', '#2575FC']}
               start={{ x: 0, y: 0 }}
@@ -185,13 +157,11 @@ export default function ForgotPassword() {
             </LinearGradient>
           </View>
 
-          {/* Información adicional */}
           <Text className="text-gray-500 text-xs mt-4 text-center leading-relaxed">
             If you don't see the email in your inbox, check your spam folder.{'\n'}
             The link will expire in 1 hour.
           </Text>
 
-          {/* Link de vuelta a login */}
           <View className="mt-6 items-center">
             <TouchableOpacity onPress={() => router.push('/login')}>
               <Text className="text-purple-600 font-medium text-sm">
