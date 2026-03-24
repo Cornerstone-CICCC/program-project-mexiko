@@ -25,15 +25,6 @@ export const verifyFirebaseToken = async (idToken: string) => {
   }
 };
 
-export const findUser = async (idOrUid: string) => {
-  return await User.findOne({
-    $or: [
-      { _id: idOrUid.match(/^[0-9a-fA-F]{24}$/) ? idOrUid : null },
-      { firebaseUid: idOrUid },
-    ],
-  });
-};
-
 export const getAllUsers = async () => await User.find();
 
 export const createUser = async (userData: any) => {
@@ -95,10 +86,62 @@ export const updateAdminStatus = async (id: string, isAdmin: boolean) => {
   return await User.findByIdAndUpdate(id, { $set: { isAdmin } }, { new: true });
 };
 
+export const findUser = async (idOrUid: string) => {
+  console.log('findUser called with:', idOrUid);
+  try {
+    const user = await User.findOne({
+      $or: [
+        { _id: idOrUid.match(/^[0-9a-fA-F]{24}$/) ? idOrUid : null },
+          { firebaseUid: idOrUid },
+        ],
+      });
+      console.log('findUser result:', user ? 'Found' : 'Not found');
+      return user;
+    } catch (error) {
+      console.error('findUser error:', error);
+      throw error;
+    }
+};
+
 export const deactivateUser = async (id: string) => {
-  return await User.findByIdAndUpdate(
-    id,
-    { isDeleted: true, deletedAt: new Date() },
-    { new: true },
-  );
+    console.log('deactivateUser called with:', id);
+    console.log('deactivateUser - ID type:', typeof id);
+    console.log('deactivateUser - ID length:', id?.length);
+    
+    try {
+      // Verify if the ID is a valid MongoDB ObjectId
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+      console.log('Is valid ObjectId:', isValidObjectId);
+      
+      if (!isValidObjectId) {
+        console.log('ID is not a valid MongoDB ObjectId, trying to find by firebaseUid first');
+        // Search for user by firebaseUid first (since id might be the firebaseUid)
+        const userByFirebaseUid = await User.findOne({ firebaseUid: id });
+        if (userByFirebaseUid) {
+          console.log('Found user by firebaseUid:', userByFirebaseUid._id);
+          const result = await User.findByIdAndUpdate(
+            userByFirebaseUid._id,
+            { isDeleted: true, deletedAt: new Date() },
+            { new: true },
+          );
+          console.log('deactivateUser result:', result ? 'Success' : 'Failed');
+          return result;
+        }
+      }
+      
+      // If ID is a valid ObjectId or user not found by firebaseUid, try to find by _id
+      const result = await User.findByIdAndUpdate(
+        id,
+        { isDeleted: true, deletedAt: new Date() },
+        { new: true },
+      );
+      
+      console.log('deactivateUser result:', result ? 'Success' : 'User not found');
+      return result;
+      
+    } catch (error) {
+      console.error('deactivateUser error:', error);
+      console.error('deactivateUser error details:', error instanceof Error ? error.message : error);
+      throw error;
+    }
 };

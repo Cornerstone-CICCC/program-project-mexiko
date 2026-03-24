@@ -198,7 +198,7 @@ const handleLogin = async () => {
             <Text className="text-gray-600 text-sm">
               Don't have an account?{' '}
             </Text>
-            <Link href="/signUp" asChild>
+            <Link href="/signup" asChild>
               <TouchableOpacity>
                 <Text className="text-purple-600 font-semibold">
                   Sign Up

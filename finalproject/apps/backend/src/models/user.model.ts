@@ -35,27 +35,27 @@ const UserSchema = new Schema<IUser>(
     gender: { 
       type: String, 
       enum: ["Male", "Female", "Other"], 
-      required: false,  // 🔴 AHORA OPCIONAL
-      default: "Other"   // Valor por defecto
+      required: false, 
+      default: "Other"  
     },
     birthDate: { 
       type: Date, 
-      required: false,   // 🔴 AHORA OPCIONAL
-      default: null      // Valor por defecto
+      required: false,   
+      default: null      
     },
     isAdmin: { type: Boolean, default: false },
     mbtiType: { 
       type: String, 
-      required: false,   // 🔴 AHORA OPCIONAL
-      default: "NOT_SPECIFIED"  // Valor por defecto
+      required: false,   
+      default: "NOT_SPECIFIED"  
     },
     keywords: { type: [String], default: [] },
     hobbies: { type: [String], default: [] },
     bio: { type: String, maxlength: 150, default: "" },
     profileImage: { 
       type: String, 
-      required: false,   // 🔴 AHORA OPCIONAL
-      default: ""        // Valor por defecto
+      required: false,  
+      default: ""        
     },
     subImages: { type: [String], default: [] },
     lastDailyMatchDate: { type: String, default: "" },

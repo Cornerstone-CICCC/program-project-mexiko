@@ -16,17 +16,21 @@ import { signOut } from "firebase/auth";
 import Toast from "react-native-toast-message";
 import authService from "@/services/auth.services";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
+import DeleteAccountModal from "@/components/DeleteAccountModal";
 import API_BASE_URL, { API_ENDPOINTS } from "@/config/api";
 export default function MoreScreen() {
   const [newMessageAlerts, setNewMessageAlerts] = useState(true);
   const [doNotDisturb, setDoNotDisturb] = useState(false);
   const [messagePreview, setMessagePreview] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   // Get current user info
   const currentUser = auth.currentUser;
   const userEmail = currentUser?.email || "No email";
+  const userId = currentUser?.uid;
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -71,47 +75,59 @@ export default function MoreScreen() {
     }
   };
 
-  if (isLoggingOut) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6A11CB" />
-          <Text style={styles.loadingText}>Logging out...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleDeleteAccount = async () => {
+    if (!userId) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'User not found',
+        position: 'top',
+      });
+      return;
+    }
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            // Delete account 
-            Alert.alert(
-              "Feature Coming Soon",
-              "Account deletion will be available in the next update."
-            );
-          },
-        },
-      ]
-    );
+    setIsDeleting(true);
+    setDeleteModalVisible(false);
+    
+    try {
+      // Delete account via authService (which calls the backend)
+      await authService.deleteAccount();
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Account Deleted',
+        text2: 'Your account has been permanently deleted',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      
+      // Redirigir al login
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Delete Failed',
+        text2: error.message || 'Please try again later',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  if (isLoggingOut) {
+  if (isLoggingOut || isDeleting) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6A11CB" />
-          <Text style={styles.loadingText}>Logging out...</Text>
+          <Text style={styles.loadingText}>
+            {isDeleting ? 'Deleting account...' : 'Logging out...'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -148,7 +164,7 @@ export default function MoreScreen() {
           label="Delete Account"
           icon="trash-outline"
           danger
-          onPress={handleDeleteAccount}
+          onPress={() => setDeleteModalVisible(true)}
         />
 
         <SectionTitle title="Notifications" />
@@ -209,6 +225,13 @@ export default function MoreScreen() {
         onClose={() => setModalVisible(false)}
         onConfirm={handleLogout}
         isLoading={isLoggingOut}
+      />
+
+      <DeleteAccountModal
+        visible={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleDeleteAccount}
+        isLoading={isDeleting}
       />
 
       <Toast />

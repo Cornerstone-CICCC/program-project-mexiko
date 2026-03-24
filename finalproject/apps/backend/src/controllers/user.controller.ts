@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
+import { User } from "../models/user.model";
 
 // delete later
 export const createUserDev = async (req: Request, res: Response) => {
@@ -47,6 +48,16 @@ export const login = async (req: Request, res: Response) => {
       sameSite: "lax",
       path: "/",
     });
+
+     // Save session with firebaseUid instead of MongoDB _id
+    req.session.userId = user.firebaseUid; 
+    req.session.save((err) => {
+      if (err) {
+        console.error('Error saving session:', err);
+        return res.status(500).json({ error: "Session error" });
+      }
+    });
+
     res.status(200).json({ success: true, user });
   } catch (e: unknown) {
     const message =
@@ -169,6 +180,69 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Failed to deactivate user account.";
+    res.status(500).json({ error: message });
+  }
+};
+
+
+export const deleteOwnAccountBySession = async (req: Request, res: Response) => {
+  try {
+    console.log('=== DELETE OWN ACCOUNT BY SESSION ===');
+    
+    const userId = req.userId; // firebaseUid de la cookie
+    console.log('User ID from session (firebaseUid):', userId);
+    
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated." });
+    }
+    
+    // Search for user by firebaseUid first (since req.userId is the firebaseUid)
+    console.log('Searching for user by firebaseUid...');
+    const existingUser = await User.findOne({ firebaseUid: userId });
+    
+    if (!existingUser) {
+      console.log('User not found');
+      return res.status(404).json({ error: "User not found." });
+    }
+    
+    const mongoId = existingUser._id;
+    console.log('User found in MongoDB with _id:', mongoId);
+    
+    // Delete user in MongoDB (soft delete)
+    const deactivatedUser = await User.findByIdAndUpdate(
+      mongoId,
+      { 
+        isDeleted: true, 
+        deletedAt: new Date(),
+        active: false 
+      },
+      { new: true },
+    );
+    
+    if (!deactivatedUser) {
+      throw new Error('Failed to deactivate user in MongoDB');
+    }
+    
+    console.log('✅ User deactivated in MongoDB');
+    
+    // Delete cookie to log out user
+    res.clearCookie("user-login", { 
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    
+    // Sent response with firebaseUid for frontend to handle Firebase deletion
+    res.status(200).json({ 
+      success: true,
+      message: "User account deactivated successfully.",
+      firebaseUid: userId
+    });
+    
+  } catch (e: unknown) {
+    console.error('Delete own account error:', e);
+    const message = e instanceof Error ? e.message : "Failed to deactivate user account.";
     res.status(500).json({ error: message });
   }
 };
