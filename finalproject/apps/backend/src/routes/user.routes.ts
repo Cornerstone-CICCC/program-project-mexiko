@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as userController from "../controllers/user.controller";
-import { isAdmin } from "../middleware/auth.middleware";
+import { isAdmin, isAuthenticated } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -19,6 +19,8 @@ router.put("/:id", userController.updateUser);
 router.patch("/:id/admin", isAdmin, userController.toggleAdmin);
 
 router.delete("/:id", isAdmin, userController.deleteUser);
+
+router.delete("/me/delete", isAuthenticated, userController.deleteOwnAccountBySession);
 
 router.post("/dev", userController.createUserDev);
 

@@ -1,11 +1,13 @@
 // frontend/services/auth.services.ts
 import { API_ENDPOINTS } from '../config/api';
+import API_BASE_URL from '../config/api';
 import { auth } from '../config/firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   sendEmailVerification,
-  signOut 
+  signOut,
+  deleteUser
 } from 'firebase/auth';
 
 interface SignUpData {
@@ -183,7 +185,7 @@ async signUp(userData: SignUpData) {
       console.log('✅ Firebase sign out successful');
       
       //Notify the backend to clear cookies/session
-      const response = await fetch(`${API_ENDPOINTS.LOGOUT}/auth/logout`, {
+      const response = await fetch(`${API_ENDPOINTS.LOGOUT}`, {
         method: 'POST',
         credentials: 'include', 
         headers: {
@@ -210,6 +212,43 @@ async signUp(userData: SignUpData) {
   getCurrentUser() {
     return auth.currentUser;
   }
+
+   // services/auth.services.ts
+async deleteAccount() {
+  try {
+    console.log('Attempting to delete account...');
+    
+    // Delete account from backend first
+    const response = await fetch(`${API_BASE_URL}/users/me/delete`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to delete account: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Account deleted from backend:', data);
+    
+    // Delete account from Firebase
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await deleteUser(currentUser);
+      console.log('✅ Firebase user deleted successfully');
+    }
+    
+    return { success: true, message: 'Account deleted successfully' };
+    
+  } catch (error) {
+    console.error('❌ Error deleting account:', error);
+    throw error;
+  }
+}
 }
 
 export default new AuthService();
