@@ -1,3 +1,4 @@
+// app/(more)/index.tsx
 import { useState } from "react";
 import { router } from "expo-router";
 import {
@@ -7,13 +8,114 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from "react-native";
 import SettingRow from "@/components/SettingRow";
-
+import { auth } from "../../config/firebase";
+import { signOut } from "firebase/auth";
+import Toast from "react-native-toast-message";
+import authService from "@/services/auth.services";
+import LogoutConfirmModal from "@/components/LogoutConfirmModal";
+import API_BASE_URL, { API_ENDPOINTS } from "@/config/api";
 export default function MoreScreen() {
   const [newMessageAlerts, setNewMessageAlerts] = useState(true);
   const [doNotDisturb, setDoNotDisturb] = useState(false);
   const [messagePreview, setMessagePreview] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Get current user info
+  const currentUser = auth.currentUser;
+  const userEmail = currentUser?.email || "No email";
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    try {
+      // Firebase logout
+      await signOut(auth);
+      console.log('✅ Firebase logout successful');
+      
+      // Backend logout (opcional)
+      try {
+        await fetch(`${API_ENDPOINTS.LOGOUT}`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch (error) {
+        console.log('Backend error:', error);
+      }
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Logged Out',
+        text2: 'You have been successfully logged out',
+        position: 'top',
+        visibilityTime: 2000,
+      });
+      
+      router.replace('/(auth)/login');
+      
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Logout Failed',
+        text2: error.message || 'Please try again',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    } finally {
+      setIsLoggingOut(false);
+      setModalVisible(false);
+    }
+  };
+
+  if (isLoggingOut) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6A11CB" />
+          <Text style={styles.loadingText}>Logging out...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            // Delete account 
+            Alert.alert(
+              "Feature Coming Soon",
+              "Account deletion will be available in the next update."
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  if (isLoggingOut) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6A11CB" />
+          <Text style={styles.loadingText}>Logging out...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,28 +129,26 @@ export default function MoreScreen() {
         <SettingRow
           label="ID"
           icon="card-outline"
-          rightText="View"
-          onPress={() => Alert.alert("Account ID", "Open account ID details")}
+          rightText={currentUser?.uid?.slice(0, 8) || "Not available"}
+          onPress={() => Alert.alert("Account ID", currentUser?.uid || "No ID available")}
         />
         <SettingRow
           label="Email"
           icon="mail-outline"
-          rightText="View"
-          onPress={() => Alert.alert("Email", "Open email settings")}
+          rightText={userEmail}
+          onPress={() => Alert.alert("Email", userEmail)}
         />
         <SettingRow
           label="Log Out"
           icon="log-out-outline"
           danger
-          onPress={() => Alert.alert("Log Out", "Log out action goes here")}
+          onPress={() => setModalVisible(true)}
         />
         <SettingRow
           label="Delete Account"
           icon="trash-outline"
           danger
-          onPress={() =>
-            Alert.alert("Delete Account", "Delete account action goes here")
-          }
+          onPress={handleDeleteAccount}
         />
 
         <SectionTitle title="Notifications" />
@@ -103,6 +203,15 @@ export default function MoreScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <LogoutConfirmModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onConfirm={handleLogout}
+        isLoading={isLoggingOut}
+      />
+
+      <Toast />
     </SafeAreaView>
   );
 }
@@ -149,5 +258,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#B0B7C3",
     textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F3F2F7",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
   },
 });
