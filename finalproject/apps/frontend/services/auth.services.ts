@@ -178,20 +178,30 @@ async signUp(userData: SignUpData) {
     try {
       console.log('Attempting to logout...');
       
-      // Sign out from Firebase
+      //Sign out from Firebase
       await signOut(auth);
+      console.log('✅ Firebase sign out successful');
       
-      // Notify the backend
-      const response = await fetch(API_ENDPOINTS.LOGOUT, {
+      //Notify the backend to clear cookies/session
+      const response = await fetch(`${API_ENDPOINTS.LOGOUT}/auth/logout`, {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
-      console.log('Session closed successfully');
-      return await response.json();
+      if (!response.ok) {
+        throw new Error('Backend logout failed');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Backend logout successful:', data);
+      
+      return { success: true, data };
       
     } catch (error) {
-      console.error('Error in logout:', error);
+      console.error('❌ Error in logout:', error);
       throw error;
     }
   }
