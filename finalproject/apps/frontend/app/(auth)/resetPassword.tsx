@@ -39,8 +39,6 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // ✅ VERSIÓN SIMPLE - SIN CONFIGURACIÓN ADICIONAL
-      // Firebase usará su formulario por defecto
       await sendPasswordResetEmail(auth, email);
       
       Toast.show({
