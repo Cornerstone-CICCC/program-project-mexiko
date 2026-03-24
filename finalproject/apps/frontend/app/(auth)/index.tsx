@@ -56,7 +56,7 @@ export default function Home() {
 
           {/* Botones */}
           <View className="w-full items-center gap-3 mt-10">
-            <Link href="/signUp" asChild>
+            <Link href="/signup" asChild>
               <TouchableOpacity 
                 className="w-full py-4 bg-white rounded-2xl shadow-lg active:bg-gray-100"
               >
