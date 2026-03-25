@@ -70,9 +70,11 @@ export default function Home() {
         {/* Enlaces inferiores */}
         <View className="w-full max-w-sm flex-row justify-between pt-4">
           <TouchableOpacity className="active:opacity-70">
-            <Text className="text-white/60 text-sm font-medium">
-              Demo: MBTI Test
-            </Text>
+            <Link href="/(dashboard)/" asChild>
+              <Text className="text-white/60 text-sm font-medium">
+                Demo: MBTI Test
+              </Text>
+            </Link>
           </TouchableOpacity>
 
           <TouchableOpacity className="active:opacity-70">
