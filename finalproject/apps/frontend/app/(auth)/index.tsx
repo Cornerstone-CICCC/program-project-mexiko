@@ -24,6 +24,10 @@ export default function Home() {
         <Button title="mbti TEst" />
       </Link>
 
+      <Link href="/(dashboard)" push asChild>
+        <Button title="dashboard" />
+      </Link>
+
       <Text className="text-white/80 mt-3 text-sm text-center">
         Find meaningful relationships based on MBTI compatibility. Because
         understanding each other starts with understanding yourself.
