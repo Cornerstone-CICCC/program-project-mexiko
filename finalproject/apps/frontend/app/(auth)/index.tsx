@@ -1,31 +1,24 @@
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { Link } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, TouchableOpacity, Image } from "react-native";
+import { Link } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function Home() {
   return (
-    <LinearGradient
-      colors={['#4A00E0', '#8E2DE2']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      className="flex-1"
-    >
+    <View className="flex-1 bg-purple-700">
       {/* Contenedor principal con padding consistente */}
       <View className="flex-1 items-center px-6 py-12">
-        
         {/* Contenedor central que agrupa todo el contenido principal */}
         <View className="flex-1 w-full max-w-sm justify-center">
-          
           {/* Logo y eslogan */}
           <View className="items-center gap-3 mb-8">
-            <Image 
-              source={require('../../assets/images/logo.svg')} 
+            <Image
+              source={require("../../assets/images/logo.png")}
               className="w-24 h-24"
               resizeMode="contain"
             />
 
             <Text className="text-white text-3xl font-bold tracking-tight">
-                MindMatch
+              MindMatch
             </Text>
 
             <Text className="text-white/80 text-sm tracking-wider">
@@ -35,8 +28,8 @@ export default function Home() {
 
           {/* Imagen central */}
           <View className="items-center justify-center mb-6">
-            <Image 
-              source={require('../../assets/images/discover.svg')} 
+            <Image
+              source={require("../../assets/images/discover.png")}
               className="w-32 h-32"
               resizeMode="contain"
             />
@@ -45,7 +38,7 @@ export default function Home() {
           {/* Textos principales */}
           <View className="gap-4">
             <Text className="text-white text-3xl font-bold text-center leading-tight">
-              Discover Your{'\n'}Personality Connection
+              Discover Your{"\n"}Personality Connection
             </Text>
 
             <Text className="text-white/70 text-base text-center leading-relaxed">
@@ -57,9 +50,7 @@ export default function Home() {
           {/* Botones */}
           <View className="w-full items-center gap-3 mt-10">
             <Link href="/signup" asChild>
-              <TouchableOpacity 
-                className="w-full py-4 bg-white rounded-2xl shadow-lg active:bg-gray-100"
-              >
+              <TouchableOpacity className="w-full py-4 bg-white rounded-2xl shadow-lg active:bg-gray-100">
                 <Text className="text-purple-700 font-bold text-center text-lg">
                   Get Started
                 </Text>
@@ -67,9 +58,7 @@ export default function Home() {
             </Link>
 
             <Link href="/login" asChild>
-              <TouchableOpacity 
-                className="w-full py-4 border-2 border-white/30 rounded-2xl active:bg-white/10"
-              >
+              <TouchableOpacity className="w-full py-4 border-2 border-white/30 rounded-2xl active:bg-white/10">
                 <Text className="text-white font-bold text-center text-lg">
                   Log In
                 </Text>
@@ -85,21 +74,18 @@ export default function Home() {
               Demo: MBTI Test
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity className="active:opacity-70">
             <Text className="text-white/60 text-sm font-medium">
               Tech Stack
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity className="active:opacity-70">
-            <Text className="text-white/60 text-sm font-medium">
-              Admin
-            </Text>
+            <Text className="text-white/60 text-sm font-medium">Admin</Text>
           </TouchableOpacity>
         </View>
-
       </View>
-    </LinearGradient>
+    </View>
   );
 }
