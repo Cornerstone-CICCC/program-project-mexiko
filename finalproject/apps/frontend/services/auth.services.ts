@@ -1,4 +1,3 @@
-// frontend/services/auth.services.ts
 import { API_ENDPOINTS } from '../config/api';
 import API_BASE_URL from '../config/api';
 import { auth } from '../config/firebase';
