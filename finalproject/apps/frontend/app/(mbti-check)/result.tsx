@@ -70,7 +70,7 @@ const result = () => {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => router.push("/")}
+              onPress={() => router.push("/(matches)")}
               style={styles.startButton}
             >
               <Text className="text-white text-xl font-bold">
