@@ -4,6 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MBTI_DETAILS, getTop5Matches, MBTI_SCORES } from "@/utils/mbti";
 import { TouchableOpacity } from "react-native";
 import { useRouter, Link } from "expo-router";
+import { auth } from "../../config/firebase";
+import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 const { width } = Dimensions.get("window");
 
 const result = () => {
@@ -11,6 +14,8 @@ const result = () => {
   const mbti = params.get("mbti") || "INFJ";
   const details = MBTI_DETAILS[mbti];
   const router = useRouter();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [dbUser, setDbUser] = useState<any>(null);
 
   const allPossibleMbtis = Object.keys(MBTI_SCORES).map((type) => ({
     userId: type,
@@ -18,6 +23,57 @@ const result = () => {
   }));
 
   const topMatches = getTop5Matches(mbti, allPossibleMbtis);
+
+  const fetchCurrentUserInfo = async (userId: string) => {
+    try {
+      const response = await fetch(`http://localhost:3500/users/${userId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setDbUser(data);
+        if (data.mbtiTestchecked === true) {
+          router.replace("/(dashboard)/");
+        }
+      }
+    } catch (error) {
+      console.error("Not found user Infomation:", error);
+    }
+  };
+
+  // connect db
+  const syncMbtiToBackend = async (userId: string, selectedMbti: string) => {
+    try {
+      setIsSyncing(true);
+      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userInfo: {
+            mbtiType: selectedMbti,
+            mbtiTestchecked: true,
+          },
+        }),
+      });
+      //console.log("response", response);
+      if (!response.ok) {
+        throw new Error("Failed to update MBTI on server");
+      }
+      console.log("✅ DB Update Success");
+    } catch (error) {
+      console.error("❌ DB Update Error:", error);
+      Alert.alert("Error", "Failed to save your MBTI result to the server.");
+    } finally {
+      //console.log("finally");
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      syncMbtiToBackend(user.uid, mbti);
+      fetchCurrentUserInfo(user.uid);
+    }
+  }, [mbti]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
@@ -48,7 +104,7 @@ const result = () => {
             </View>
           </View>
 
-          <View>
+          <View className="items-center w-full">
             <Text className="text-xl font-bold mb-4">Best Matches</Text>
             <View className="flex-row flex-wrap gap-3">
               {topMatches.map((match, index) => (
@@ -70,7 +126,7 @@ const result = () => {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => router.push("/")}
+              onPress={() => router.push("/(dashboard)/")}
               style={styles.startButton}
             >
               <Text className="text-white text-xl font-bold">

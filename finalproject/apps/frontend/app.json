@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.frontend"
+      "bundleIdentifier": "com.anonymous.frontend",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show your profile location",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Show your location on the profile."
+      }
     },
     "android": {
       "adaptiveIcon": {

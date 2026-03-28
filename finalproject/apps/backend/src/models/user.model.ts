@@ -11,7 +11,7 @@ export interface IUser extends Document {
   isAdmin: boolean;
   mbtiType?: string;
   keywords: string[];
-  hobbies: string[];
+  Interests: string[];
   bio: string;
   profileImage?: string;
   subImages: string[];
@@ -21,6 +21,21 @@ export interface IUser extends Document {
   lastLogin: Date;
   isDeleted: boolean;
   deletedAt?: Date | null;
+  location: {
+    type: { type: String; enum: ["Point"]; default: "Point" };
+    coordinates: { type: [Number]; default: [0, 0] };
+  };
+  preferredDistance: { type: Number; default: 10 };
+  mbtiTestchecked: boolean;
+  preferredAgeRange: {
+    min: { type: Number; default: 18 };
+    max: { type: Number; default: 30 };
+  };
+  preferredGender: {
+    type: String;
+    enum: ["Male", "Female", "Other", "All"];
+    default: "All";
+  };
 }
 
 const UserSchema = new Schema<IUser>(
@@ -32,30 +47,30 @@ const UserSchema = new Schema<IUser>(
       first: { type: String, required: true },
       last: { type: String, required: true },
     },
-    gender: { 
-      type: String, 
-      enum: ["Male", "Female", "Other"], 
-      required: false, 
-      default: "Other"  
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Other"],
+      required: false,
+      default: "Other",
     },
-    birthDate: { 
-      type: Date, 
-      required: false,   
-      default: null      
+    birthDate: {
+      type: Date,
+      required: false,
+      default: null,
     },
     isAdmin: { type: Boolean, default: false },
-    mbtiType: { 
-      type: String, 
-      required: false,   
-      default: "NOT_SPECIFIED"  
+    mbtiType: {
+      type: String,
+      required: false,
+      default: "NOT_SPECIFIED",
     },
     keywords: { type: [String], default: [] },
-    hobbies: { type: [String], default: [] },
+    Interests: { type: [String], default: [] },
     bio: { type: String, maxlength: 150, default: "" },
-    profileImage: { 
-      type: String, 
-      required: false,  
-      default: ""        
+    profileImage: {
+      type: String,
+      required: false,
+      default: "",
     },
     subImages: { type: [String], default: [] },
     lastDailyMatchDate: { type: String, default: "" },
@@ -63,13 +78,30 @@ const UserSchema = new Schema<IUser>(
     reportedCount: { type: Number, default: 0 },
     lastLogin: { type: Date, default: Date.now },
     isDeleted: { type: Boolean, default: false },
-    deletedAt: { 
-      type: Date, 
+    deletedAt: {
+      type: Date,
       default: null,
-      required: false
+      required: false,
     },
+    location: {
+      type: { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [경도, 위도]
+    },
+    preferredAgeRange: {
+      min: { type: Number, default: 18 },
+      max: { type: Number, default: 30 },
+    },
+    preferredDistance: { type: Number, default: 10 }, // 최대 10km
+    preferredGender: {
+      type: String,
+      enum: ["Male", "Female", "Other", "All"],
+      default: "All",
+    },
+    mbtiTestchecked: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
+
+UserSchema.index({ location: "2dsphere" });
 
 export const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
