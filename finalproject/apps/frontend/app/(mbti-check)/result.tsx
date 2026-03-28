@@ -126,7 +126,7 @@ const result = () => {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => router.push("/(dashboard)/")}
+              onPress={() => router.push("/")}
               style={styles.startButton}
             >
               <Text className="text-white text-xl font-bold">
