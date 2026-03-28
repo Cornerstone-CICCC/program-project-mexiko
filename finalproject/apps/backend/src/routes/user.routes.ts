@@ -11,16 +11,19 @@ router.post("/logout", userController.logout);
 //router.get("/", isAdmin, userController.getUsers);
 router.get("/", userController.getUsers);
 
-
 router.get("/:id", userController.getUser);
 
-router.put("/:id", userController.updateUser);
+router.patch("/:id", userController.updateUser);
 
 router.patch("/:id/admin", isAdmin, userController.toggleAdmin);
 
 router.delete("/:id", isAdmin, userController.deleteUser);
 
-router.delete("/me/delete", isAuthenticated, userController.deleteOwnAccountBySession);
+router.delete(
+  "/me/delete",
+  isAuthenticated,
+  userController.deleteOwnAccountBySession,
+);
 
 router.post("/dev", userController.createUserDev);
 
