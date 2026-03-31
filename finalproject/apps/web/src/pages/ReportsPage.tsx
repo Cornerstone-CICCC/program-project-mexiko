@@ -1,38 +1,80 @@
-import { useEffect, useState } from 'react';
-import StatusBadge from '../components/ui/StatusBadge';
-import { getReports } from '../services/reportService';
+import { useEffect, useState } from 'react'
+import StatusBadge from '../components/ui/StatusBadge'
+import { getReports } from '../services/reportService'
 
 interface ReportItem {
-  _id?: string;
-  id?: string;
-  reporter?: string;
-  type?: string;
-  status?: 'Pending' | 'Reviewing' | 'Resolved' | string;
-  reason?: string;
+  _id?: string
+  id?: string
+  reporterId?: string
+  reportedUserId?: string
+  type?: string
+  reason?: string
+  status?: string
+  createdAt?: string
 }
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState<ReportItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reports, setReports] = useState<ReportItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const normalizeStatus = (status?: string) => {
+    if (!status) return 'resolved'
+
+    const normalized = status.toLowerCase()
+
+    if (normalized.includes('pending')) return 'pending'
+    if (normalized.includes('review')) return 'reviewing'
+
+    return 'resolved'
+  }
+
+  const getStatusLabel = (status?: string) => {
+    if (!status) return 'Resolved'
+
+    const normalized = status.toLowerCase()
+
+    if (normalized.includes('pending')) return 'Pending'
+    if (normalized.includes('review')) return 'Reviewing'
+
+    return 'Resolved'
+  }
+
+  const getReporterDisplay = (report: ReportItem) => {
+    return report.reporterId || 'Unknown'
+  }
+
+  const getTypeDisplay = (report: ReportItem) => {
+    return report.type || report.reason || 'No reason'
+  }
 
   const loadReports = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await getReports();
-      setReports(Array.isArray(data) ? data : []);
+      setLoading(true)
+      setError(null)
+
+      const data = await getReports()
+
+      const normalizedReports = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.reports)
+          ? data.reports
+          : Array.isArray(data?.data)
+            ? data.data
+            : []
+
+      setReports(normalizedReports)
     } catch (err) {
-      console.error(err);
-      setError('Could not load reports.');
+      console.error(err)
+      setError('Could not load reports.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadReports();
-  }, []);
+    loadReports()
+  }, [])
 
   return (
     <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
@@ -70,22 +112,16 @@ export default function ReportsPage() {
                   className="border-t border-[var(--color-border)]"
                 >
                   <td className="px-6 py-5 font-medium text-slate-800">
-                    {report.reporter || '-'}
+                    {getReporterDisplay(report)}
                   </td>
+
                   <td className="px-6 py-5 text-slate-600">
-                    {report.type || report.reason || '-'}
+                    {getTypeDisplay(report)}
                   </td>
+
                   <td className="px-6 py-5">
-                    <StatusBadge
-                      variant={
-                        report.status === 'Pending'
-                          ? 'pending'
-                          : report.status === 'Reviewing'
-                            ? 'reviewing'
-                            : 'resolved'
-                      }
-                    >
-                      {report.status || 'Resolved'}
+                    <StatusBadge variant={normalizeStatus(report.status)}>
+                      {getStatusLabel(report.status)}
                     </StatusBadge>
                   </td>
                 </tr>
@@ -106,5 +142,5 @@ export default function ReportsPage() {
         </div>
       )}
     </section>
-  );
+  )
 }
