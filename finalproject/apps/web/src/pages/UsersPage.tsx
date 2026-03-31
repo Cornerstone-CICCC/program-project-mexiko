@@ -1,38 +1,62 @@
-import { useEffect, useState } from 'react';
-import { getUsers } from '../services/userService';
+import { useEffect, useState } from 'react'
+import { getUsers } from '../services/userService'
+
+interface FullName {
+  first?: string
+  last?: string
+}
 
 interface UserItem {
-  _id?: string;
-  id?: string;
-  username?: string;
-  name?: string;
-  email?: string;
-  mbti?: string;
-  isAdmin?: boolean;
+  _id?: string
+  id?: string
+  email?: string
+  isAdmin?: boolean
+  mbtiType?: string
+  fullName?: FullName
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const getUserDisplayName = (user: UserItem) => {
+    const fullName = [user.fullName?.first, user.fullName?.last]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+
+    if (fullName) return fullName
+
+    return 'No name'
+  }
+
+  const getUserMbti = (user: UserItem) => {
+    if (!user.mbtiType || user.mbtiType === 'NOT_SPECIFIED') {
+      return '-'
+    }
+
+    return user.mbtiType
+  }
 
   const loadUsers = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await getUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      setLoading(true)
+      setError(null)
+
+      const data = await getUsers()
+      setUsers(data)
     } catch (err) {
-      console.error(err);
-      setError('Could not load users.');
+      console.error(err)
+      setError('Could not load users.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    loadUsers()
+  }, [])
 
   return (
     <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
@@ -71,10 +95,10 @@ export default function UsersPage() {
                   className="border-t border-[var(--color-border)]"
                 >
                   <td className="px-6 py-5 font-medium text-slate-800">
-                    {user.username || user.name || 'Unknown User'}
+                    {getUserDisplayName(user)}
                   </td>
                   <td className="px-6 py-5 text-slate-600">{user.email || '-'}</td>
-                  <td className="px-6 py-5 text-slate-600">{user.mbti || '-'}</td>
+                  <td className="px-6 py-5 text-slate-600">{getUserMbti(user)}</td>
                   <td className="px-6 py-5 text-slate-600">
                     {user.isAdmin ? 'Yes' : 'No'}
                   </td>
@@ -96,5 +120,5 @@ export default function UsersPage() {
         </div>
       )}
     </section>
-  );
+  )
 }
