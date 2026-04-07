@@ -1,12 +1,13 @@
 import {
   BarChart3,
   Heart,
-  House,
+  LogOut,
   Settings,
   ShieldAlert,
   Users,
 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: BarChart3 },
@@ -17,6 +18,23 @@ const navItems = [
 ]
 
 export default function Sidebar() {
+  const navigate = useNavigate()
+  const { logout, user } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
+
+  const displayName = [user?.fullName?.first, user?.fullName?.last]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
   return (
     <aside className="hidden h-full border-r border-[var(--color-border)] bg-white lg:flex lg:flex-col">
       <div className="flex h-full flex-col">
@@ -30,7 +48,9 @@ export default function Sidebar() {
               <h1 className="text-[30px] font-bold leading-none text-[var(--color-text-main)]">
                 MindMatch
               </h1>
-              <p className="mt-1 text-sm text-[var(--color-text-soft)]">Admin Panel</p>
+              <p className="mt-1 text-sm text-[var(--color-text-soft)]">
+                Admin Panel
+              </p>
             </div>
           </div>
 
@@ -56,10 +76,23 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        <div className="mt-auto p-6">
-          <button className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-            <House className="h-4 w-4" />
-            <span>Back to App</span>
+        <div className="mt-auto space-y-3 p-6">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Signed in as
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {displayName || user?.email || 'Admin'}
+            </p>
+            <p className="text-xs text-slate-500">{user?.email || '-'}</p>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Log Out</span>
           </button>
         </div>
       </div>
