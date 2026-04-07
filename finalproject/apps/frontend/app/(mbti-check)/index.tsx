@@ -9,11 +9,36 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Link } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
-import { Button } from "@/components/Button";
+import { auth } from "../../config/firebase";
+import { useEffect, useState } from "react";
+
 const { width } = Dimensions.get("window");
 
 export default function MBTIIndex() {
   const router = useRouter();
+
+  const [dbUser, setDbUser] = useState<any>(null);
+  const fetchCurrentUserInfo = async (userId: string) => {
+    try {
+      const response = await fetch(`http://localhost:3500/users/${userId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setDbUser(data);
+        if (data.mbtiTestchecked === true) {
+          router.replace("/(dashboard)/");
+        }
+      }
+    } catch (error) {
+      console.error("Not found user Infomation:", error);
+    }
+  };
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      fetchCurrentUserInfo(user.uid);
+    }
+  }, []);
 
   return (
     <View style={styles.fullScreen}>

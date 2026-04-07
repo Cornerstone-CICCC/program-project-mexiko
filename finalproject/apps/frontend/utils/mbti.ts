@@ -311,102 +311,150 @@ export const getTop5Matches = (
 
 export const MBTI_DETAILS: Record<
   string,
-  { title: string; about: string; traits: string[] }
+  { title: string; about: string[]; traits: string[] }
 > = {
   INFJ: {
     title: "The Advocate",
-    about:
-      "Quiet and mystical, yet very inspiring and tireless idealists. They have a deep sense of idealism and integrity.",
+    about: [
+      "Quiet and mystical, yet very inspiring.",
+      "Tireless idealists with a deep sense of integrity.",
+      "Seek to leave a lasting positive impact.",
+    ],
     traits: ["Empathetic", "Creative", "Insightful", "Passionate"],
   },
   ENFP: {
     title: "The Campaigner",
-    about:
-      "Enthusiastic, creative and sociable free spirits, who can always find a reason to smile. They value emotional connections.",
+    about: [
+      "Enthusiastic, creative and sociable free spirits.",
+      "Can always find a reason to smile.",
+      "Deeply value emotional connections with others.",
+    ],
     traits: ["Enthusiastic", "Social", "Idealistic", "Spontaneous"],
   },
   ENTJ: {
     title: "The Commander",
-    about:
-      "Bold, imaginative and strong-willed leaders, always finding a way – or making one. They excel at strategic planning.",
+    about: [
+      "Bold, imaginative and strong-willed leaders.",
+      "Always finding a way – or making one.",
+      "Excel at strategic planning and long-term goals.",
+    ],
     traits: ["Strategic", "Ambitious", "Confident", "Efficient"],
   },
   INTJ: {
     title: "The Architect",
-    about:
-      "Imaginative and strategic thinkers, with a plan for everything. They enjoy logical analysis and problem-solving.",
+    about: [
+      "Imaginative and strategic thinkers.",
+      "Always have a plan for everything.",
+      "Enjoy logical analysis and complex problem-solving.",
+    ],
     traits: ["Analytical", "Independent", "Logical", "Determined"],
   },
   INFP: {
     title: "The Mediator",
-    about:
-      "Poetic, kind and altruistic people, always eager to help a good cause. They value deep relationships with like-minded people.",
+    about: [
+      "Poetic, kind and altruistic people.",
+      "Always eager to help a good cause.",
+      "Value deep relationships with like-minded people.",
+    ],
     traits: ["Compassionate", "Creative", "Adaptable", "Whimsical"],
   },
   ENFJ: {
     title: "The Protagonist",
-    about:
-      "Charismatic and inspiring leaders, able to mesmerize their listeners. They help others grow and strive for the common good.",
+    about: [
+      "Charismatic and inspiring leaders.",
+      "Able to mesmerize their listeners.",
+      "Help others grow and strive for the common good.",
+    ],
     traits: ["Charismatic", "Altruistic", "Reliable", "Inspiring"],
   },
   ENTP: {
     title: "The Debater",
-    about:
-      "Smart and curious thinkers who cannot resist an intellectual challenge. They are energetic, quick-witted, and innovative.",
+    about: [
+      "Smart and curious thinkers.",
+      "Cannot resist an intellectual challenge.",
+      "Energetic, quick-witted, and innovative.",
+    ],
     traits: ["Innovative", "Knowledgeable", "Quick-witted", "Energetic"],
   },
   INTP: {
     title: "The Logician",
-    about:
-      "Innovative inventors with an unquenchable thirst for knowledge. They seek to understand the world through logic and analysis.",
+    about: [
+      "Innovative inventors with a thirst for knowledge.",
+      "Seek to understand the world through logic.",
+      "Quiet, reserved, but deeply analytical.",
+    ],
     traits: ["Objective", "Imaginative", "Open-minded", "Intellectual"],
   },
   ESTJ: {
     title: "The Executive",
-    about:
-      "Excellent administrators, unsurpassed at managing things or people. They are honest, dedicated, and lead with dignity.",
+    about: [
+      "Excellent administrators and managers.",
+      "Honest, dedicated, and lead with dignity.",
+      "Value tradition and orderly environments.",
+    ],
     traits: ["Organized", "Dedicated", "Direct", "Pragmatic"],
   },
   ESFJ: {
     title: "The Consul",
-    about:
-      "Extraordinarily caring, social and community-minded people. They are always eager to help and value social harmony.",
+    about: [
+      "Extraordinarily caring and social people.",
+      "Community-minded and eager to help.",
+      "Value social harmony and cooperation.",
+    ],
     traits: ["Supportive", "Social", "Loyal", "Warm-hearted"],
   },
   ISTJ: {
     title: "The Logistician",
-    about:
-      "Practical and fact-minded individuals, whose reliability cannot be doubted. They respect rules, tradition, and honesty.",
+    about: [
+      "Practical and fact-minded individuals.",
+      "Reliability that cannot be doubted.",
+      "Respect rules, tradition, and honesty.",
+    ],
     traits: ["Responsible", "Practical", "Orderly", "Honest"],
   },
   ISFJ: {
     title: "The Defender",
-    about:
-      "Very dedicated and warm protectors, always ready to defend their loved ones. They feel a deep sense of responsibility.",
+    about: [
+      "Very dedicated and warm protectors.",
+      "Always ready to defend their loved ones.",
+      "Possess a deep sense of responsibility.",
+    ],
     traits: ["Protective", "Patient", "Detail-oriented", "Humble"],
   },
   ESTP: {
     title: "The Entrepreneur",
-    about:
-      "Smart, energetic and very perceptive people, who truly enjoy living on the edge. They are bold and action-oriented.",
+    about: [
+      "Smart, energetic and very perceptive.",
+      "Truly enjoy living on the edge.",
+      "Bold, action-oriented, and sociable.",
+    ],
     traits: ["Action-oriented", "Bold", "Direct", "Sociable"],
   },
   ESFP: {
     title: "The Entertainer",
-    about:
-      "Spontaneous, energetic and enthusiastic people – life is never boring around them. They love engaging with others.",
+    about: [
+      "Spontaneous, energetic and enthusiastic.",
+      "Life is never boring around them.",
+      "Love engaging with others and the spotlight.",
+    ],
     traits: ["Playful", "Enthusiastic", "Talkative", "Practical"],
   },
   ISTP: {
     title: "The Virtuoso",
-    about:
-      "Bold and practical experimenters, masters of all kinds of tools. They are rational and excel at technical troubleshooting.",
+    about: [
+      "Bold and practical experimenters.",
+      "Masters of all kinds of tools and tech.",
+      "Excel at technical troubleshooting.",
+    ],
     traits: ["Resourceful", "Observant", "Practical", "Spontaneous"],
   },
   ISFP: {
     title: "The Adventurer",
-    about:
-      "Flexible and charming artists, always ready to explore and experience something new. They express themselves freely.",
+    about: [
+      "Flexible and charming artists.",
+      "Always ready to explore and experience new things.",
+      "Express themselves freely through creativity.",
+    ],
     traits: ["Artistic", "Sensitive", "Quiet", "Flexible"],
   },
 };
