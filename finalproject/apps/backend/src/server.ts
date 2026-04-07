@@ -17,8 +17,32 @@ import dbTestRouter from "./routes/db-test.routes";
 import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
+// ENV
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
+// ===== VALIDATE ENV =====
+console.log("🔍 Verificando variables de entorno...");
+
+if (!process.env.FIREBASE_PROJECT_ID) {
+  console.error("❌ FIREBASE_PROJECT_ID no está definido");
+  process.exit(1);
+}
+if (!process.env.FIREBASE_CLIENT_EMAIL) {
+  console.error("❌ FIREBASE_CLIENT_EMAIL no está definido");
+  process.exit(1);
+}
+if (!process.env.FIREBASE_PRIVATE_KEY) {
+  console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
+  process.exit(1);
+}
+
+console.log("✅ Variables de entorno verificadas");
+
+// Firebase init
+import "./config/firebase-admin";
+
+// ===== CRON =====
 cron.schedule("0 8 * * *", async () => {
-  // matching starts at 8:00 a.m.
   console.log("Batch process started: Generating daily matches.");
   try {
     await generateDailyMatches();
@@ -27,36 +51,16 @@ cron.schedule("0 8 * * *", async () => {
   }
 });
 
-dotenv.config({ path: path.join(__dirname, "../.env") });
-
-//firebase admin initialization moved to separate file for better error handling and modularity
-console.log('🔍 Verificando variables de entorno...');
-if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error('❌ FIREBASE_PROJECT_ID no está definido');
-  process.exit(1);
-}
-if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  console.error('❌ FIREBASE_CLIENT_EMAIL no está definido');
-  process.exit(1);
-}
-if (!process.env.FIREBASE_PRIVATE_KEY) {
-  console.error('❌ FIREBASE_PRIVATE_KEY no está definido');
-  process.exit(1);
-}
-console.log('✅ Variables de entorno verificadas');
-
-// Inicializar Firebase Admin (importar esto ejecuta la inicialización)
-import './config/firebase-admin';
-
-
-
+// ===== APP =====
 const app = express();
-//socket code
 const httpServer = createServer(app);
+
+// ===== SOCKET.IO =====
+const allowedOrigins = ["http://localhost:5173", "http://localhost:8081"];
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:8081",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -76,18 +80,27 @@ io.on("connection", (socket) => {
   });
 });
 
+// ===== MIDDLEWARE =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 🔥 FIX CORS (web + expo + postman safe)
 app.use(
   cors({
-    origin: "http://localhost:8081",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS not allowed for origin: ${origin}`));
+      }
+    },
     credentials: true,
   }),
 );
 
-if (!process.env.COOKIE_PRIMARY_KEY || !process.env.COOKIE_SECONDARY_KEY) {
-  throw new Error("Missing cookie keys!");
+// ===== SESSION =====
+if (!process.env.COOKIE_PRIMARY_KEY) {
+  throw new Error("Missing COOKIE_PRIMARY_KEY!");
 }
 
 app.use(
@@ -95,20 +108,25 @@ app.use(
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    },
   }),
 );
 
+// ===== ROUTES =====
 app.use("/users", userRoter);
 app.use("/reports", reportRouter);
 app.use("/match", matchRouter);
 app.use("/chatroom", chatroomRouter);
 app.use("/db-tsst", dbTestRouter);
 
-app.use((_req: Request, res: Response, _next: NextFunction) => {
+// ===== FALLBACK =====
+app.use((_req: Request, res: Response) => {
   res.status(400).json({ message: "Invalid route!" });
 });
 
+// ===== START SERVER =====
 const startServer = async () => {
   try {
     await connectDB();
