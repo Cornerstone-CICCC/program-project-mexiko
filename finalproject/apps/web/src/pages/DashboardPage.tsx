@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { TrendingUp, Users } from 'lucide-react';
+import { useEffect, useState } from 'react'
+import { TrendingUp, Users } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -10,101 +10,64 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
-import ChartCard from '../components/dashboard/ChartCard';
-import DataTableCard from '../components/dashboard/DataTableCard';
-import StatCard from '../components/dashboard/StatCard';
-import StatusBadge from '../components/ui/StatusBadge';
-import {
-  matchSuccessData as fallbackMatchSuccessData,
-  recentUsers as fallbackRecentUsers,
-  reportManagement as fallbackReportManagement,
-  stats as fallbackStats,
-  userGrowthData as fallbackUserGrowthData,
-} from '../data/dashboard';
+} from 'recharts'
+import ChartCard from '../components/dashboard/ChartCard'
+import DataTableCard from '../components/dashboard/DataTableCard'
+import StatCard from '../components/dashboard/StatCard'
+import StatusBadge from '../components/ui/StatusBadge'
 import {
   getDashboardSummary,
   getRecentReportsPreview,
   getRecentUsersPreview,
-} from '../services/dashboardService';
-import type {
-  MatchSuccessItem,
-  RecentUser,
-  ReportItem,
-  StatItem,
-  UserGrowthItem,
-} from '../types/dashboard';
+  type DashboardMatchSuccessItem,
+  type DashboardRecentUser,
+  type DashboardReportItem,
+  type DashboardStatItem,
+  type DashboardUserGrowthItem,
+} from '../services/dashboardService'
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<StatItem[]>(fallbackStats);
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>(fallbackRecentUsers);
-  const [reportManagement, setReportManagement] =
-    useState<ReportItem[]>(fallbackReportManagement);
-  const [matchSuccessChartData, setMatchSuccessChartData] =
-    useState<MatchSuccessItem[]>(fallbackMatchSuccessData);
-  const [userGrowthChartData, setUserGrowthChartData] =
-    useState<UserGrowthItem[]>(fallbackUserGrowthData);
+  const [stats, setStats] = useState<DashboardStatItem[]>([])
+  const [recentUsers, setRecentUsers] = useState<DashboardRecentUser[]>([])
+  const [reportManagement, setReportManagement] = useState<DashboardReportItem[]>([])
+  const [matchSuccessChartData, setMatchSuccessChartData] = useState<DashboardMatchSuccessItem[]>([])
+  const [userGrowthChartData, setUserGrowthChartData] = useState<DashboardUserGrowthItem[]>([])
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        setLoading(true);
-        setError(null);
+        setLoading(true)
+        setError(null)
 
-        const [summaryResult, recentUsersResult, recentReportsResult] =
-          await Promise.allSettled([
-            getDashboardSummary(),
-            getRecentUsersPreview(),
-            getRecentReportsPreview(),
-          ]);
+        const [summary, recentUsersResult, recentReportsResult] = await Promise.all([
+          getDashboardSummary(),
+          getRecentUsersPreview(),
+          getRecentReportsPreview(),
+        ])
 
-        if (summaryResult.status === 'fulfilled' && summaryResult.value) {
-          const summary = summaryResult.value;
-
-          if (Array.isArray(summary.stats)) {
-            setStats(summary.stats);
-          }
-
-          if (Array.isArray(summary.matchSuccessData)) {
-            setMatchSuccessChartData(summary.matchSuccessData);
-          }
-
-          if (Array.isArray(summary.userGrowthData)) {
-            setUserGrowthChartData(summary.userGrowthData);
-          }
-        }
-
-        if (
-          recentUsersResult.status === 'fulfilled' &&
-          Array.isArray(recentUsersResult.value)
-        ) {
-          setRecentUsers(recentUsersResult.value);
-        }
-
-        if (
-          recentReportsResult.status === 'fulfilled' &&
-          Array.isArray(recentReportsResult.value)
-        ) {
-          setReportManagement(recentReportsResult.value);
-        }
+        setStats(summary.stats)
+        setMatchSuccessChartData(summary.matchSuccessData)
+        setUserGrowthChartData(summary.userGrowthData)
+        setRecentUsers(recentUsersResult)
+        setReportManagement(recentReportsResult)
       } catch (err) {
-        console.error(err);
-        setError('Could not load live dashboard data. Showing fallback data.');
+        console.error(err)
+        setError('Could not load dashboard data.')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
 
-    loadDashboardData();
-  }, []);
+    void loadDashboardData()
+  }, [])
 
   return (
     <div className="space-y-6">
       {error ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       ) : null}
@@ -121,16 +84,26 @@ export default function DashboardPage() {
           subtitle="Matches vs. Profile Reveals"
           action={<TrendingUp className="h-5 w-5" />}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={matchSuccessChartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
-              <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="matches" fill="#5b5ce2" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="reveals" fill="#9d8cff" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              Loading chart...
+            </div>
+          ) : !matchSuccessChartData.length ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              No match data available.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={matchSuccessChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
+                <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="matches" fill="#5b5ce2" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="reveals" fill="#9d8cff" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
 
         <ChartCard
@@ -138,22 +111,32 @@ export default function DashboardPage() {
           subtitle="New registrations over time"
           action={<Users className="h-5 w-5" />}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={userGrowthChartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
-              <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="users"
-                stroke="#5b5ce2"
-                strokeWidth={3}
-                dot={{ r: 4, fill: '#5b5ce2' }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              Loading chart...
+            </div>
+          ) : !userGrowthChartData.length ? (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              No user growth data available.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={userGrowthChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
+                <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#5b5ce2"
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: '#5b5ce2' }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </ChartCard>
       </section>
 
@@ -176,9 +159,7 @@ export default function DashboardPage() {
                     <StatusBadge variant="mbti">{user.mbti}</StatusBadge>
                   </td>
                   <td className="px-6 py-5">
-                    <StatusBadge
-                      variant={user.status === 'Active' ? 'success' : 'inactive'}
-                    >
+                    <StatusBadge variant={user.status === 'Active' ? 'success' : 'inactive'}>
                       {user.status}
                     </StatusBadge>
                   </td>
@@ -188,10 +169,7 @@ export default function DashboardPage() {
 
               {!recentUsers.length && !loading ? (
                 <tr>
-                  <td
-                    colSpan={4}
-                    className="px-6 py-8 text-center text-sm text-slate-500"
-                  >
+                  <td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">
                     No recent users found.
                   </td>
                 </tr>
@@ -213,9 +191,7 @@ export default function DashboardPage() {
             <tbody>
               {reportManagement.map((report) => (
                 <tr key={report.id} className="border-t border-[var(--color-border)]">
-                  <td className="px-6 py-5 font-medium text-slate-800">
-                    {report.reporter}
-                  </td>
+                  <td className="px-6 py-5 font-medium text-slate-800">{report.reporter}</td>
                   <td className="px-6 py-5 text-slate-600">{report.type}</td>
                   <td className="px-6 py-5">
                     <StatusBadge
@@ -240,10 +216,7 @@ export default function DashboardPage() {
 
               {!reportManagement.length && !loading ? (
                 <tr>
-                  <td
-                    colSpan={4}
-                    className="px-6 py-8 text-center text-sm text-slate-500"
-                  >
+                  <td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">
                     No reports found.
                   </td>
                 </tr>
@@ -253,5 +226,5 @@ export default function DashboardPage() {
         </DataTableCard>
       </section>
     </div>
-  );
+  )
 }
