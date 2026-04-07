@@ -35,6 +35,10 @@ export default function Sidebar() {
     .join(' ')
     .trim()
 
+  const avatarLetter = (displayName || user?.email || 'A')
+    .charAt(0)
+    .toUpperCase()
+
   return (
     <aside className="hidden h-full border-r border-[var(--color-border)] bg-white lg:flex lg:flex-col">
       <div className="flex h-full flex-col">
@@ -77,19 +81,26 @@ export default function Sidebar() {
         </div>
 
         <div className="mt-auto space-y-3 p-6">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Signed in as
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
-              {displayName || user?.email || 'Admin'}
-            </p>
-            <p className="text-xs text-slate-500">{user?.email || '-'}</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-brand-soft)] font-semibold text-[var(--color-brand)]">
+                {avatarLetter}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight text-slate-900">
+                  {displayName || 'Admin'}
+                </p>
+                <p className="truncate text-xs text-slate-500">
+                  {user?.email || '-'}
+                </p>
+              </div>
+            </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
           >
             <LogOut className="h-4 w-4" />
             <span>Log Out</span>
