@@ -10,15 +10,15 @@ import {
   deleteUser,
 } from "firebase/auth";
 
-// Interfaz actualizada con todos los datos de las 3 páginas
+// Interfaces for type safety
 interface SignUpData {
-  // Datos de página 1
+  // Information basic for account creation
   name: string;
   lastName: string;
   email: string;
   password: string;
   
-  // Datos de página 2
+  // Information for profile
   gender: 'Male' | 'Female' | 'Other';
   birthDate: string;
   bio: string;
@@ -26,7 +26,7 @@ interface SignUpData {
   profileImage?: string | null;
   subImages?: string[];
   
-  // Datos de página 3 - Preferencias
+  // Information for preferences
   location: {
     type: string;
     coordinates: [number, number];
@@ -63,12 +63,12 @@ class AuthService {
         subImagesCount: userData.subImages?.length || 0,
       });
 
-      // Validación de contraseña
+      // Validations with detailed logging
       if (userData.password.length < 6) {
         throw new Error("Password must be at least 6 characters long");
       }
 
-      // Validaciones adicionales
+      // Validations with detailed logging
       if (!userData.gender) {
         throw new Error("Please select your gender");
       }
