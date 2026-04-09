@@ -20,9 +20,8 @@ import { generateDailyMatches } from "./services/match.service";
 // ENV
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-// ===== VALIDATE ENV =====
+//firebase admin initialization moved to separate file for better error handling and modularity
 console.log("🔍 Verificando variables de entorno...");
-
 if (!process.env.FIREBASE_PROJECT_ID) {
   console.error("❌ FIREBASE_PROJECT_ID no está definido");
   process.exit(1);
@@ -35,10 +34,9 @@ if (!process.env.FIREBASE_PRIVATE_KEY) {
   console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
   process.exit(1);
 }
-
 console.log("✅ Variables de entorno verificadas");
 
-// Firebase init
+// Inicializar Firebase Admin (importar esto ejecuta la inicialización)
 import "./config/firebase-admin";
 
 // ===== CRON =====
@@ -85,10 +83,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 🔥 FIX CORS (web + expo + postman safe)
+const allowedOrigins = [
+  "http://localhost:8081",
+  "http://localhost:19006",
+  "http://localhost:8082",
+];
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS not allowed for origin: ${origin}`));
@@ -103,18 +109,32 @@ if (!process.env.COOKIE_PRIMARY_KEY) {
   throw new Error("Missing COOKIE_PRIMARY_KEY!");
 }
 
+// proxy
+app.set("trust proxy", 1);
+
 app.use(
   session({
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    rolling: true,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
+  }),
+);
+
+//app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+//app.use("/uploads", express.static("uploads"));
+app.use(
+  "/uploads",
+  express.static("uploads", {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".m4a")) {
+        res.setHeader("Content-Type", "audio/m4a");
+      }
     },
   }),
 );
 
-// ===== ROUTES =====
 app.use("/users", userRoter);
 app.use("/reports", reportRouter);
 app.use("/match", matchRouter);
