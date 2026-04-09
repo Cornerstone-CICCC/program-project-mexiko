@@ -63,12 +63,65 @@ export const login = async (req: Request, res: Response) => {
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Invalid authentication token.";
-    res.status(401).json({ error: message });
+    return res.status(401).json({ error: message });
   }
 };
 
-export const logout = (_req: Request, res: Response) => {
-  res.clearCookie("user-login", { path: "/" }).json({ success: true });
+export const logout = (req: Request, res: Response) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Logout session destroy error:", err);
+      return res.status(500).json({ error: "Failed to logout." });
+    }
+
+    res.clearCookie("user-login", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    res.clearCookie("connect.sid", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    return res.status(200).json({ success: true });
+  });
+};
+
+export const getSessionMe = async (req: Request, res: Response) => {
+  try {
+    const sessionUserId = req.session?.userId;
+
+    if (!sessionUserId) {
+      return res.status(200).json({
+        authenticated: false,
+        user: null,
+      });
+    }
+
+    const user = await User.findOne({ firebaseUid: sessionUserId });
+
+    if (!user) {
+      return res.status(200).json({
+        authenticated: false,
+        user: null,
+      });
+    }
+
+    return res.status(200).json({
+      authenticated: true,
+      user,
+    });
+  } catch (error) {
+    console.error("getSessionMe error:", error);
+    return res.status(500).json({
+      error: "Failed to get session user",
+    });
+  }
 };
 
 export const signup = async (req: Request, res: Response) => {
@@ -123,6 +176,7 @@ export const signup = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getUsers = async (_req: Request, res: Response) => {
   try {
     const users = await userService.getAllUsers();
@@ -192,7 +246,7 @@ export const deleteOwnAccountBySession = async (
   try {
     console.log("=== DELETE OWN ACCOUNT BY SESSION ===");
 
-    const userId = req.userId; // firebaseUid de la cookie
+    const userId = req.userId;
     console.log("User ID from session (firebaseUid):", userId);
 
     if (!userId) {
