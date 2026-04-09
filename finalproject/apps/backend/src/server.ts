@@ -30,25 +30,23 @@ cron.schedule("0 8 * * *", async () => {
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 //firebase admin initialization moved to separate file for better error handling and modularity
-console.log('🔍 Verificando variables de entorno...');
+console.log("🔍 Verificando variables de entorno...");
 if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error('❌ FIREBASE_PROJECT_ID no está definido');
+  console.error("❌ FIREBASE_PROJECT_ID no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  console.error('❌ FIREBASE_CLIENT_EMAIL no está definido');
+  console.error("❌ FIREBASE_CLIENT_EMAIL no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_PRIVATE_KEY) {
-  console.error('❌ FIREBASE_PRIVATE_KEY no está definido');
+  console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
   process.exit(1);
 }
-console.log('✅ Variables de entorno verificadas');
+console.log("✅ Variables de entorno verificadas");
 
 // Inicializar Firebase Admin (importar esto ejecuta la inicialización)
-import './config/firebase-admin';
-
-
+import "./config/firebase-admin";
 
 const app = express();
 //socket code
@@ -81,7 +79,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: "http://localhost:8081",
+    origin: [
+      "http://localhost:8081",
+      "http://localhost:19006",
+      "http://localhost:8082",
+    ],
     credentials: true,
   }),
 );
@@ -90,12 +92,29 @@ if (!process.env.COOKIE_PRIMARY_KEY || !process.env.COOKIE_SECONDARY_KEY) {
   throw new Error("Missing cookie keys!");
 }
 
+// proxy
+app.set("trust proxy", 1);
+
 app.use(
   session({
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
+  }),
+);
+
+//app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+//app.use("/uploads", express.static("uploads"));
+app.use(
+  "/uploads",
+  express.static("uploads", {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".m4a")) {
+        res.setHeader("Content-Type", "audio/m4a");
+      }
+    },
   }),
 );
 

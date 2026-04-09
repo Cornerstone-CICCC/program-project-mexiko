@@ -1,8 +1,11 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+const { v4: uuidv4 } = require("uuid");
 
 export interface IChatRoom extends Document {
-  participants: mongoose.Types.ObjectId[];
-  matchId: mongoose.Types.ObjectId;
+  roomId: string;
+  //participants: mongoose.Types.ObjectId[];
+  participants: string[];
+  matchId: string;
   status: "active" | "expired" | "revealed" | "restricted";
   consent: {
     userA: boolean;
@@ -14,15 +17,21 @@ export interface IChatRoom extends Document {
 
 const ChatRoomSchema = new Schema<IChatRoom>(
   {
+    roomId: {
+      type: String,
+      default: () => uuidv4(),
+      unique: true,
+      index: true,
+    },
     participants: [
       {
-        type: Schema.Types.ObjectId,
+        type: String,
         ref: "User",
         index: true,
       },
     ],
     matchId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: "Match",
       required: true,
     },

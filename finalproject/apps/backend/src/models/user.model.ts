@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import { v4 as uuidv4 } from "uuid";
+//import { v4 as uuidv4 } from "uuid";
+const { v4: uuidv4 } = require("uuid");
 
 export interface IUser extends Document {
   id: string;
@@ -85,13 +86,13 @@ const UserSchema = new Schema<IUser>(
     },
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], default: [0, 0] }, // [경도, 위도]
+      coordinates: { type: [Number], default: [0, 0] },
     },
     preferredAgeRange: {
       min: { type: Number, default: 18 },
       max: { type: Number, default: 30 },
     },
-    preferredDistance: { type: Number, default: 10 }, // 최대 10km
+    preferredDistance: { type: Number, default: 10 },
     preferredGender: {
       type: String,
       enum: ["Male", "Female", "Other", "All"],
