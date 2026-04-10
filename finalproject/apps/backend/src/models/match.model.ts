@@ -1,17 +1,48 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface IMatchedUser {
+  targetId: mongoose.Types.ObjectId;
+  synergyScore: number;
+  isOpened: boolean;
+  recommendedAt: Date;
+  expiresAt: Date;
+}
+
 export interface IMatch extends Document {
   userId: mongoose.Types.ObjectId;
-  matchedUsers: [
-    {
-      targetId: mongoose.Types.ObjectId;
-      synergyScore: number;
-      isOpened: boolean;
-    },
-  ];
-  matchDate: string;
+  matchedUsers: IMatchedUser[];
   createdAt: Date;
+  updatedAt: Date;
 }
+
+const MatchedUserSchema = new Schema<IMatchedUser>(
+  {
+    targetId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    synergyScore: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    isOpened: {
+      type: Boolean,
+      default: false,
+    },
+    recommendedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+    },
+  },
+  { _id: false },
+);
 
 const MatchSchema = new Schema<IMatch>(
   {
@@ -20,22 +51,15 @@ const MatchSchema = new Schema<IMatch>(
       ref: "User",
       required: true,
       index: true,
+      unique: true,
     },
-    matchedUsers: [
-      {
-        targetId: { type: Schema.Types.ObjectId, ref: "User" },
-        synergyScore: { type: Number },
-        isOpened: { type: Boolean, default: false },
-      },
-    ],
-    matchDate: {
-      type: String,
-      required: true,
-      index: true,
+    matchedUsers: {
+      type: [MatchedUserSchema],
+      default: [],
     },
   },
   {
-    timestamps: { createdAt: true, updatedAt: false },
+    timestamps: true,
   },
 );
 
