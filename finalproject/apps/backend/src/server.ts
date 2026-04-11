@@ -54,7 +54,11 @@ const app = express();
 const httpServer = createServer(app);
 
 // ===== SOCKET.IO =====
-const allowedOrigins = ["http://localhost:5173", "http://localhost:8081"];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:19006",
+  "http://localhost:8081",
+];
 
 const io = new Server(httpServer, {
   cors: {
@@ -83,11 +87,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 🔥 FIX CORS (web + expo + postman safe)
-const allowedOrigins = [
-  "http://localhost:8081",
-  "http://localhost:19006",
-  "http://localhost:8082",
-];
 
 app.use(
   cors({
