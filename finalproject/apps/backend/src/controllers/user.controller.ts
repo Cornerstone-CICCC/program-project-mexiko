@@ -18,10 +18,10 @@ export const login = async (req: Request, res: Response) => {
     const decodedToken = await userService.verifyFirebaseToken(idToken);
     const email = decodedToken.email;
 
-    // Search for user by Firebase UID first
+    // Search for user by Firebase UID first (for users created after Firebase integration)
     let user = await userService.findUser(decodedToken.uid);
 
-    // If not found by UID, try email
+    // If not found by UID, try email (for users created before Firebase integration)
     if (!user && email) {
       console.log("⚠️ Not found by UID, searching by email...");
       user = await userService.findUserByEmail(email);
@@ -48,16 +48,18 @@ export const login = async (req: Request, res: Response) => {
       path: "/",
     });
 
+    // Save session with firebaseUid instead of MongoDB _id
     req.session.userId = user.firebaseUid;
-
     req.session.save((err) => {
       if (err) {
         console.error("Error saving session:", err);
         return res.status(500).json({ error: "Session error" });
       }
-
-      return res.status(200).json({ success: true, user });
+      res.status(200).json({ success: true, user });
+      console.log("req.session.userId", req.session.userId);
     });
+
+    //res.status(200).json({ success: true, user });
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Invalid authentication token.";
@@ -138,7 +140,7 @@ export const signup = async (req: Request, res: Response) => {
       });
     }
 
-    // If not found by UID, try email
+    // If not found by UID, try email (for users created before Firebase integration)
     user = await userService.findUserByEmail(email);
 
     if (user) {
@@ -251,6 +253,7 @@ export const deleteOwnAccountBySession = async (
       return res.status(401).json({ error: "User not authenticated." });
     }
 
+    // Search for user by firebaseUid first (since req.userId is the firebaseUid)
     console.log("Searching for user by firebaseUid...");
     const existingUser = await User.findOne({ firebaseUid: userId });
 
@@ -262,6 +265,7 @@ export const deleteOwnAccountBySession = async (
     const mongoId = existingUser._id;
     console.log("User found in MongoDB with _id:", mongoId);
 
+    // Delete user in MongoDB (soft delete)
     const deactivatedUser = await User.findByIdAndUpdate(
       mongoId,
       {
@@ -278,6 +282,7 @@ export const deleteOwnAccountBySession = async (
 
     console.log("✅ User deactivated in MongoDB");
 
+    // Delete cookie to log out user
     res.clearCookie("user-login", {
       path: "/",
       httpOnly: true,
@@ -285,6 +290,7 @@ export const deleteOwnAccountBySession = async (
       sameSite: "lax",
     });
 
+    // Sent response with firebaseUid for frontend to handle Firebase deletion
     res.status(200).json({
       success: true,
       message: "User account deactivated successfully.",

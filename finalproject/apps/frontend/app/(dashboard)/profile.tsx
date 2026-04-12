@@ -99,7 +99,7 @@ const Profile = () => {
       });
       const data = await response.json();
 
-      setUser(response);
+      //setUser(response);
       console.log("response", response);
       if (response.ok) {
         setUser(data);

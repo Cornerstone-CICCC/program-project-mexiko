@@ -18,6 +18,7 @@ export default function MBTIIndex() {
   const router = useRouter();
 
   const [dbUser, setDbUser] = useState<any>(null);
+
   const fetchCurrentUserInfo = async (userId: string) => {
     try {
       const response = await fetch(`http://localhost:3500/users/${userId}`);
