@@ -1,4 +1,3 @@
-// app/_layout.tsx
 import { useEffect } from "react";
 import { router } from "expo-router";
 import * as Linking from "expo-linking";
@@ -8,10 +7,39 @@ import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import "./global.css";
 import Toast from "react-native-toast-message";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+function LayoutWithAuth() {
+  const { loading } = useAuth();
+
+  // Don't render anything until we know the auth status to prevent flickering
+  if (loading) {
+    return null; 
+  }
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(dashboard)" />
+        <Stack.Screen name="(mbti-check)" />
+        <Stack.Screen name="(matches)/index" />
+        <Stack.Screen name="(chat)/room/[id]/index" />
+        <Stack.Screen name="(chat)/room/[id]/report" />
+        <Stack.Screen name="(chat)/room/[id]/reportDetail" />
+        <Stack.Screen name="(chat)/room/[id]/settings" />
+        <Stack.Screen name="(more)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+      <Toast />
+      <StatusBar style="auto" />
+    </>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -51,18 +79,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(dashboard)" />
-        <Stack.Screen name="(mbti-check)" />
-        <Stack.Screen name="(matches)" />
-        <Stack.Screen name="(chat)" />
-        <Stack.Screen name="(more)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-      <Toast />
-      <StatusBar style="auto" />
-    </>
+    <AuthProvider>
+      <LayoutWithAuth />
+    </AuthProvider>
   );
 }

@@ -116,6 +116,11 @@ app.use(
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     rolling: true,
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
   }),
