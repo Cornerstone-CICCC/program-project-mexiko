@@ -3,45 +3,54 @@ import * as matchService from "../services/match.service";
 
 export const getMatches = async (req: Request, res: Response) => {
   try {
-    const list = await matchService.getMatchingList(req.userId!);
-    res.json({ data: list });
+    const firebaseUid = req.userId;
+    const list = await matchService.getMatchingList(firebaseUid!);
+    return res.status(200).json({ data: list });
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Failed to fetch matching list.";
-    res.status(400).json({ error: message });
+    return res.status(400).json({ error: message });
   }
 };
 
 export const applyMatch = async (req: Request, res: Response) => {
   try {
+    const firebaseUid = req.userId;
     const { targetUserId } = req.body;
-    const myId = req.userId;
-    const match = await matchService.createMatchRequest(myId!, targetUserId);
-    res
+
+    const match = await matchService.createMatchRequest(
+      firebaseUid!,
+      targetUserId,
+    );
+
+    return res
       .status(201)
       .json({ message: "Match requested successfully.", data: match });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Failed to request match.";
-    res.status(400).json({ error: message });
+    return res.status(400).json({ error: message });
   }
 };
 
 export const handleMatchInteraction = async (req: Request, res: Response) => {
   try {
+    const firebaseUid = req.userId;
     const matchId = req.params.matchId as string;
-    const { currentUserId, targetUserId } = req.body;
+    const { targetUserId } = req.body;
+
     const chatRoomId = await matchService.processMatchInteraction(
+      firebaseUid!,
       matchId,
-      currentUserId,
       targetUserId,
     );
-    res.json({
+
+    return res.status(200).json({
       message: "Match interaction processed successfully.",
       chatRoomId,
     });
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Failed to process match interaction.";
-    res.status(400).json({ error: message });
+    return res.status(400).json({ error: message });
   }
 };

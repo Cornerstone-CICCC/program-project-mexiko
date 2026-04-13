@@ -4,10 +4,13 @@ import { isAuthenticated } from "../middleware/auth.middleware";
 
 const router = Router();
 
+// User-facing match feed
 router.get("/", isAuthenticated, matchController.getMatches);
 router.post("/", isAuthenticated, matchController.applyMatch);
+
+// User interaction with a recommendation
 router.patch(
-  "/:matchId",
+  "/:matchId/interact",
   isAuthenticated,
   matchController.handleMatchInteraction,
 );
