@@ -30,36 +30,35 @@ const Profile = () => {
       setLoadingLocation(true);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-
-      await new Promise((r) => setTimeout(r, 1200));
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission denied",
+          "Allow location access to set your profile.",
+        );
+        return;
+      }
 
       const locationData = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.BestForNavigation,
+        accuracy: Location.Accuracy.Balanced,
       });
 
       const { latitude, longitude } = locationData.coords;
 
-      const geo = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude,
-      });
-
+      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
       const address = geo?.[0];
 
       const city =
         address?.city || address?.district || address?.subregion || "";
-
       const region = address?.region || "";
 
       const locationString =
         city && region
           ? `${city}, ${region}`
-          : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          : `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
 
       await updateLocation(user.uid, locationString);
     } catch (e) {
-      console.log(e);
+      console.error(e);
     } finally {
       setLoadingLocation(false);
     }
@@ -213,7 +212,14 @@ const Profile = () => {
   };
 
   const bio = user?.bio || "Write Your Introduction";
-  const locationText = user?.location;
+  //const locationText = user?.location;
+  const locationText =
+    typeof user?.location === "string"
+      ? user.location
+      : user?.location?.type === "Point"
+        ? "Location set"
+        : "";
+  console.log("locationText", locationText);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>

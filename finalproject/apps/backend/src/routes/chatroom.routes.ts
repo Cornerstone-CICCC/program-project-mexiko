@@ -33,14 +33,10 @@ router.post(
     { name: "file", maxCount: 1 },
     { name: "files", maxCount: 5 },
   ]),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const { messageType, roomId } = req.body;
+      const { messageType } = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-      if (messageType === "image" && files?.files) {
-        return chatController.postMessage(req, res);
-      }
 
       if (
         (messageType === "voice" || messageType === "video") &&
@@ -51,33 +47,39 @@ router.post(
         const fileName = `converted-${Date.now()}${messageType === "voice" ? ".m4a" : ".mp4"}`;
         const targetPath = path.join("uploads", fileName);
 
-        let command = ffmpeg(originalPath);
+        await new Promise((resolve, reject) => {
+          let command = ffmpeg(originalPath);
 
-        if (messageType === "voice") {
-          command.toFormat("ipod").audioCodec("aac");
-        } else {
-          command.videoCodec("libx264").audioCodec("aac").format("mp4");
-        }
+          if (messageType === "voice") {
+            command.toFormat("ipod").audioCodec("aac");
+          } else {
+            command
+              .videoCodec("libx264")
+              .audioCodec("aac")
+              .outputOptions([
+                "-pix_fmt yuv420p",
+                "-preset ultrafast",
+                "-movflags +faststart",
+                "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                "-movflags +faststart",
+              ])
+              .on("start", (cmd) => console.log("FFmpeg started:", cmd))
+              .format("mp4");
+          }
 
-        command
-          .on("end", async () => {
-            if (fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
+          command.on("end", resolve).on("error", reject).save(targetPath);
+        });
 
-            files.file[0].filename = fileName;
-            files.file[0].path = targetPath;
-            return chatController.postMessage(req, res);
-          })
-          .on("error", (err) => {
-            console.error("FFmpeg Error:", err);
-            return res.status(500).json({ error: "File processing failed" });
-          })
-          .save(targetPath);
-      } else {
-        return chatController.postMessage(req, res);
+        if (fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
+
+        req.files["file"][0].filename = fileName;
+        req.files["file"][0].path = targetPath;
       }
+
+      return chatController.postMessage(req, res);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Server Error" });
+      console.error("FFmpeg Processing Error:", error);
+      res.status(500).json({ error: "File processing failed" });
     }
   },
 );
