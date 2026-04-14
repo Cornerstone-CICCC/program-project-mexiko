@@ -23,6 +23,8 @@ export const getRoom = async (req: Request, res: Response) => {
     const roomId = String(req.params.roomId || req.params.id);
     const userId = req.session.userId;
     const page = parseInt(req.query.page as string) || 1;
+    console.log("roomId", roomId);
+    console.log("userId", userId);
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
     if (!roomId) return res.status(400).json({ error: "Room ID is required" });
@@ -67,23 +69,31 @@ export const postMessage = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const filesMap = req.files as {
+      [fieldname: string]: Express.Multer.File[];
+    };
+
+    //const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let { content, messageType } = req.body || {};
 
-    if (messageType === "image" && files?.files) {
-      content = files.files.map((f) => f.filename).join(",");
-    } else if (files?.file?.[0]) {
-      const uploadedFile = files.file[0];
+    if (filesMap?.files && filesMap.files.length > 0) {
+      content = filesMap.files.map((f) => f.filename).join(",");
+      if (!messageType) messageType = "image";
+    } else if (filesMap?.file?.[0]) {
+      const uploadedFile = filesMap.file[0];
       content = uploadedFile.filename;
+      console.log("uploadedFile.filename", uploadedFile.filename);
 
-      if (!messageType || messageType === "text") {
-        if (uploadedFile.mimetype.includes("audio")) messageType = "voice";
-        else if (uploadedFile.mimetype.includes("video")) messageType = "video";
-        else messageType = "image";
+      if (uploadedFile.mimetype.includes("audio")) {
+        messageType = "voice";
+      } else if (uploadedFile.mimetype.includes("video")) {
+        messageType = "video";
+      } else if (uploadedFile.mimetype.includes("image")) {
+        messageType = "image";
       }
     }
 
-    if (!content && (!files || Object.keys(files).length === 0)) {
+    if (!content && !req.body.content) {
       return res
         .status(400)
         .json({ error: "Message content or file is required" });

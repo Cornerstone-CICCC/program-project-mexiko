@@ -322,7 +322,13 @@ const chat = () => {
                       className={`${!room.lastMessageIsRead && room.lastMessageSenderId !== currentUserId ? "font-bold text-slate-900" : "text-slate-600"} text-sm`}
                       numberOfLines={1}
                     >
-                      {room.lastMessage || "Start a new conversation!"}
+                      {/*room.lastMessage || "Start a new conversation!"*/}
+                      {typeof room.lastMessage === "string"
+                        ? room.lastMessage
+                        : typeof room.lastMessage === "object" &&
+                            room.lastMessage !== null
+                          ? "[Can't check content]"
+                          : "Start a new conversation!"}
                     </Text>
                   </View>
                 </Pressable>
