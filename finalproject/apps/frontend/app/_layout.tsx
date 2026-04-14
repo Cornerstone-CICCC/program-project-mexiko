@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { router } from "expo-router";
+import { router, useSegments, Stack } from "expo-router";
 import * as Linking from "expo-linking";
-import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -14,7 +13,22 @@ export const unstable_settings = {
 };
 
 function LayoutWithAuth() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      // Redirect to login if unauthenticated and not already in auth group
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      // Redirect away from login if authenticated
+      router.replace('/(mbti-check)');
+    }
+  }, [user, loading, segments]);
 
   // Don't render anything until we know the auth status to prevent flickering
   if (loading) {

@@ -1,3 +1,4 @@
+import API_BASE_URL from "../../config/api";
 import {
   View,
   Text,
@@ -21,7 +22,7 @@ export default function MBTIIndex() {
 
   const fetchCurrentUserInfo = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:3500/users/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`);
       const data = await response.json();
       if (response.ok) {
         setDbUser(data);

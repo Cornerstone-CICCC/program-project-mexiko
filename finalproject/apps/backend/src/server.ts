@@ -21,17 +21,17 @@ import { generateDailyMatches } from "./services/match.service";
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 //firebase admin initialization moved to separate file for better error handling and modularity
-console.log("🔍 Verificando variables de entorno...");
+console.log("🔍 Verify enviroment variables...");
 if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error("❌ FIREBASE_PROJECT_ID no está definido");
+  console.error("❌ FIREBASE_PROJECT_ID is not defined");
   process.exit(1);
 }
 if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  console.error("❌ FIREBASE_CLIENT_EMAIL no está definido");
+  console.error("❌ FIREBASE_CLIENT_EMAIL is not defined");
   process.exit(1);
 }
 if (!process.env.FIREBASE_PRIVATE_KEY) {
-  console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
+  console.error("❌ FIREBASE_PRIVATE_KEY is not defined");
   process.exit(1);
 }
 console.log("✅ Variables de entorno verificadas");
@@ -116,13 +116,13 @@ app.use(
     secret: process.env.COOKIE_PRIMARY_KEY,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    rolling: true,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
+    },
   }),
 );
 
