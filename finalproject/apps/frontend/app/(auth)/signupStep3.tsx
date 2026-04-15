@@ -27,7 +27,7 @@ export default function SignUpStep3() {
   const params = useLocalSearchParams();
   const step1Data = params.step1Data ? JSON.parse(params.step1Data as string) : null;
   const step2Data = params.step2Data ? JSON.parse(params.step2Data as string) : null;
-  
+
   const [preferences, setPreferences] = useState<PreferencesData>({
     location: {
       coordinates: [0, 0],
@@ -41,7 +41,7 @@ export default function SignUpStep3() {
     preferredGender: 'All',
     showLocationOnProfile: false,
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
@@ -75,7 +75,7 @@ export default function SignUpStep3() {
         longitude: location.coords.longitude,
       });
 
-      const address = reverseGeocode[0] 
+      const address = reverseGeocode[0]
         ? `${reverseGeocode[0].city || reverseGeocode[0].region || ''}, ${reverseGeocode[0].country || ''}`
         : 'Unknown location';
 
@@ -111,36 +111,28 @@ export default function SignUpStep3() {
       return;
     }
 
+    // Validación mínima necesaria
     if (preferences.preferredAgeRange.min >= preferences.preferredAgeRange.max) {
       Alert.alert('Error', 'Minimum age must be less than maximum age');
-      return;
-    }
-
-    if (preferences.preferredAgeRange.min < 18) {
-      Alert.alert('Error', 'Minimum age cannot be less than 18');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Combine all data into a single object to send to the backend
       const completeUserData = {
-        // Information for account creation
         name: step1Data?.name,
         lastName: step1Data?.lastName,
         email: step1Data?.email,
         password: step1Data?.password,
-        
-        // Information for profile
+
         gender: step2Data?.gender,
         birthDate: step2Data?.birthDate,
         bio: step2Data?.bio,
         interests: step2Data?.interests,
         profileImage: step2Data?.profileImage,
         subImages: step2Data?.subImages,
-        
-        // Information for preferences
+
         location: {
           type: 'Point',
           coordinates: preferences.location.coordinates,
@@ -155,14 +147,12 @@ export default function SignUpStep3() {
       };
 
       console.log('Creating account with complete data:', completeUserData);
-      
-      // Call the signup service with all the collected data
+
       const response = await authService.signUp(completeUserData);
 
       console.log('Sign up response:', response);
-      
+
       if (response.isNewUser) {
-        // New user - account created successfully
         Alert.alert(
           '✅ Account Created',
           `Your account has been created successfully!\n\n` +
@@ -179,11 +169,9 @@ export default function SignUpStep3() {
           ]
         );
       } else {
-        // Existing user - successful login
-        console.log('Existing user, redirecting...');
         router.push('/login');
       }
-      
+
     } catch (error: any) {
       console.error('Signup error:', error);
       Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
@@ -191,6 +179,7 @@ export default function SignUpStep3() {
       setIsLoading(false);
     }
   };
+
 
   const handleBack = () => {
     router.back();
@@ -210,11 +199,11 @@ export default function SignUpStep3() {
             <Text className="text-white text-xs font-medium">STEP 3 OF 3</Text>
             <Text className="text-white/70 text-xs">100%</Text>
           </View>
-          
+
           <View className="h-1.5 bg-white/30 rounded-full overflow-hidden">
             <View className="h-full bg-white rounded-full" style={{ width: '100%' }} />
           </View>
-          
+
           <View className="flex-row justify-between mt-3">
             <View className="items-center">
               <View className="w-8 h-8 rounded-full bg-white/30 items-center justify-center">
@@ -238,7 +227,7 @@ export default function SignUpStep3() {
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
@@ -372,9 +361,8 @@ export default function SignUpStep3() {
                     <TouchableOpacity
                       key={gender}
                       onPress={() => setPreferences({ ...preferences, preferredGender: gender })}
-                      className={`px-4 py-2 rounded-full ${
-                        preferences.preferredGender === gender ? 'bg-purple-600' : 'bg-gray-100'
-                      }`}
+                      className={`px-4 py-2 rounded-full ${preferences.preferredGender === gender ? 'bg-purple-600' : 'bg-gray-100'
+                        }`}
                     >
                       <Text className={`font-medium ${preferences.preferredGender === gender ? 'text-white' : 'text-gray-700'}`}>
                         {gender === 'All' ? 'Everyone' : gender}
@@ -388,7 +376,7 @@ export default function SignUpStep3() {
               <View className="mt-4 p-4 bg-purple-50 rounded-xl">
                 <Text className="text-purple-800 font-semibold text-center mb-2">Your Discovery Settings</Text>
                 <Text className="text-purple-700 text-sm text-center">
-                  🔍 Looking for {preferences.preferredGender === 'All' ? 'everyone' : preferences.preferredGender.toLowerCase()} 
+                  🔍 Looking for {preferences.preferredGender === 'All' ? 'everyone' : preferences.preferredGender.toLowerCase()}
                   {' • '}
                   📍 Within {formatDistance(preferences.preferredDistance)}
                   {' • '}
@@ -403,7 +391,7 @@ export default function SignUpStep3() {
                 end={{ x: 1, y: 0 }}
                 className="w-full rounded-xl shadow-md mt-4"
               >
-                <TouchableOpacity 
+                <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={handleCreateAccount}
                   disabled={isLoading}
