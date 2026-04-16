@@ -1,32 +1,44 @@
 import mongoose from "mongoose";
 import { ChatRoom } from "../models/chatroom.model";
 import { Message } from "../models/message.model";
-import { User } from "../models/user.model"; // User 모델 import 확인하세요!
+import { User } from "../models/user.model";
 
 export const chatService = {
   async getMyRooms(userId: string) {
-    const rooms = await ChatRoom.find({ participants: userId })
+    const rooms = await ChatRoom.find({
+      participants: userId,
+      blockedBy: { $ne: userId },
+    })
       .sort({ updatedAt: -1 })
       .lean();
 
     const roomsWithDetails = await Promise.all(
       rooms.map(async (room) => {
+        const myDeletedAt =
+          room.deletedAt instanceof Map
+            ? room.deletedAt.get(userId)
+            : (room.deletedAt as any)?.[userId] || new Date(0);
+
+        const hasNewMessage = await Message.exists({
+          chatRoomId: room.roomId,
+          createdAt: { $gt: myDeletedAt },
+        });
+
         const unreadCount = await Message.countDocuments({
           chatRoomId: room.roomId,
           senderId: { $ne: userId },
           isRead: false,
+          createdAt: { $gt: myDeletedAt },
         });
 
         const participantDetails = await User.find(
-          {
-            firebaseUid: { $in: room.participants },
-          },
+          { firebaseUid: { $in: room.participants } },
           "firebaseUid mbtiType fullName profileImage",
         ).lean();
 
         return {
           ...room,
-          participants: participantDetails,
+          lastMessage: hasNewMessage ? room.lastMessage : "",
           unreadCount,
           currentUserId: userId,
         };
@@ -49,6 +61,11 @@ export const chatService = {
       throw new Error("Access denied or chat room not found");
     }
 
+    const myDeletedAt =
+      room.deletedAt instanceof Map
+        ? room.deletedAt.get(userId)
+        : (room.deletedAt as any)?.[userId] || new Date(0);
+
     const participantDetails = await User.find(
       {
         firebaseUid: { $in: room.participants },
@@ -58,6 +75,7 @@ export const chatService = {
 
     const messages = await Message.find({
       chatRoomId: roomId,
+      createdAt: { $gt: myDeletedAt },
     })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -125,6 +143,31 @@ export const chatService = {
     await ChatRoom.findOneAndUpdate(
       { roomId: roomId, lastMessageSenderId: { $ne: userId } },
       { $set: { lastMessageIsRead: true } },
+    );
+  },
+
+  async clearChatHistory(roomId: string, userId: string) {
+    const updateQuery = { [`deletedAt.${userId}`]: new Date() };
+    return await ChatRoom.findOneAndUpdate(
+      { roomId: roomId, participants: userId },
+      { $set: updateQuery },
+      { new: true },
+    );
+  },
+
+  async blockUser(roomId: string, userId: string) {
+    const room = await ChatRoom.findOne({
+      roomId: roomId,
+      participants: userId,
+    });
+    if (!room) throw new Error("Room not found");
+
+    const targetId = room.participants.find((p) => p !== userId);
+
+    return await ChatRoom.findOneAndUpdate(
+      { roomId: roomId },
+      { $addToSet: { blockedBy: userId } },
+      { new: true },
     );
   },
 };

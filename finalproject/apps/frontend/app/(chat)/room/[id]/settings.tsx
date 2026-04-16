@@ -15,10 +15,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
 
 const chatSettings = () => {
   const { id } = useLocalSearchParams();
   console.log("id", id);
+  const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
 
   const [isNotifEnabled, setIsNotifEnabled] = useState(true);
@@ -27,7 +34,8 @@ const chatSettings = () => {
   const toggleSwitch = () =>
     setIsNotifEnabled((previousState) => !previousState);
 
-  const handleClearChat = (roomId: number) => {
+  const handleClearChat = (roomId: string) => {
+    console.log("roomid", roomId, typeof roomId);
     Alert.alert(
       "Clear Chat History",
       "Are you sure you want to delete all messages in this chat?",
@@ -36,12 +44,38 @@ const chatSettings = () => {
         {
           text: "Clear",
           style: "destructive",
-          onPress: () => {
-            console.log(`Room ${roomId} history cleared`);
+          onPress: async () => {
+            try {
+              await axios.post(`/chatroom/${roomId}/clear`);
+              console.log(`Room ${roomId} history cleared`);
+              Alert.alert("Success", "Chat history has been cleared.");
+            } catch (error) {
+              console.error("❌ Failed clearing chat history:", error);
+              Alert.alert(
+                "Error",
+                "Could not clear chat history. Please try again.",
+              );
+            }
           },
         },
       ],
     );
+  };
+
+  const handleBlockUser = async (roomId: string) => {
+    try {
+      const response = await axios.post(`/chatroom/${roomId}/block`);
+
+      if (response.data.success) {
+        setBlockModalVisible(false);
+        Alert.alert("Blocked", "User has been blocked successfully.");
+
+        router.push("/(dashboard)/chat");
+      }
+    } catch (error: any) {
+      console.error("❌ Failed to block user:", error);
+      Alert.alert("Error", "Could not block user. Please try again.");
+    }
   };
 
   return (
@@ -116,7 +150,7 @@ const chatSettings = () => {
         {/*  Clear Chat History */}
         <View style={styles.groupCard}>
           <TouchableOpacity
-            onPress={() => handleClearChat(Number(id))}
+            onPress={() => handleClearChat(id)}
             activeOpacity={0.7}
           >
             <View style={styles.itemContainer}>
@@ -181,8 +215,9 @@ const chatSettings = () => {
               <TouchableOpacity
                 style={styles.blockButton}
                 onPress={() => {
-                  setBlockModalVisible(false);
-                  alert("Successfully blocked user");
+                  //setBlockModalVisible(false);
+                  //alert("Successfully blocked user");
+                  handleBlockUser(id as string);
                 }}
               >
                 <Text style={styles.blockButtonText}>Block</Text>
