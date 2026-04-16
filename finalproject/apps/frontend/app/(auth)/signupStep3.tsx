@@ -111,7 +111,7 @@ export default function SignUpStep3() {
       return;
     }
 
-    // Validación mínima necesaria
+    // Validation minimum age
     if (preferences.preferredAgeRange.min >= preferences.preferredAgeRange.max) {
       Alert.alert('Error', 'Minimum age must be less than maximum age');
       return;
