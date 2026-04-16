@@ -69,7 +69,7 @@ const chat = () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-
+      console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -287,8 +287,15 @@ const chat = () => {
                       />
                     </View>
                     <View style={styles.timeBadge}>
-                      <Text className="text-white text-[8px] mr-1">🕒</Text>
-                      <Text className="text-white text-[10px] font-bold">
+                      <Text
+                        style={{
+                          color: "white",
+                          fontSize: 10,
+                          fontWeight: "800",
+                          includeFontPadding: false,
+                          textAlignVertical: "center",
+                        }}
+                      >
                         {getRemainingTime(room.updatedAt)}
                       </Text>
                     </View>
@@ -342,29 +349,41 @@ const chat = () => {
 };
 
 export default chat;
-
 const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 24,
     backgroundColor: "white",
     padding: 16,
+    marginBottom: 16,
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  profileImg: { width: "100%", height: "100%", borderRadius: 100 },
+  profileImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 100,
+  },
   timeBadge: {
     position: "absolute",
-    bottom: -4,
-    right: -4,
-    backgroundColor: "#4F46E5",
-    borderRadius: 12,
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#6366F1",
+    minWidth: 32,
+    height: 20,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    justifyContent: "center",
+    paddingHorizontal: 5,
     borderWidth: 2,
     borderColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
 });

@@ -158,3 +158,58 @@ export const removeRoom = async (req: Request, res: Response) => {
     res.status(403).json({ error: message });
   }
 };
+
+export const clearChat = async (req: Request, res: Response) => {
+  console.log("clear chat");
+  console.log("params: ", req.params);
+
+  try {
+    const roomId = req.params.roomId as string;
+    const userId = req.session.userId as string;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!roomId) return res.status(400).json({ error: "Room ID is required" });
+
+    await chatService.clearChatHistory(roomId, userId);
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(userId).emit("chat_cleared", { roomId });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Chat history cleared for you successfully." });
+  } catch (e: any) {
+    console.error("❌ clearChat Error:", e.message);
+    res.status(500).json({ error: "Failed to clear chat history" });
+  }
+};
+
+export const blockUser = async (req: Request, res: Response) => {
+  const userId = req.session.userId as string;
+  const roomId = req.params.roomId as string;
+
+  if (!userId || !roomId) {
+    return res.status(400).json({ error: "Missing required information" });
+  }
+
+  try {
+    const result = await chatService.blockUser(roomId, userId);
+
+    if (!result) {
+      return res
+        .status(404)
+        .json({ error: "Chat room not found or unauthorized" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User blocked successfully",
+      data: result,
+    });
+  } catch (e: any) {
+    console.error("❌ blockUser Error:", e.message);
+    res.status(500).json({ error: "Failed to block user" });
+  }
+};

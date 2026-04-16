@@ -27,6 +27,9 @@ router.get("/:roomId", chatController.getRoom);
 router.delete("/:roomId", chatController.removeRoom);
 router.post("/", chatController.createRoom);
 
+router.post("/:roomId/clear", chatController.clearChat);
+router.post("/:roomId/block", chatController.blockUser);
+
 router.post(
   "/:roomId/messages",
   upload.fields([
