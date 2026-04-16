@@ -203,9 +203,9 @@ export default function SignUpStep2() {
     try {
       step1DataString = JSON.stringify(step1Data);
       step2DataString = JSON.stringify(formData);
-      console.log('7. Data stringified successfully');
-      console.log(`8. Step1 data size: ${step1DataString.length} characters`);
-      console.log(`9. Step2 data size: ${step2DataString.length} characters`);
+      console.log('Data stringified successfully');
+      console.log(`Step1 data size: ${step1DataString.length} characters`);
+      console.log(`Step2 data size: ${step2DataString.length} characters`);
 
       // Verify total size of data being passed
       const totalSize = step1DataString.length + step2DataString.length;
@@ -422,7 +422,7 @@ export default function SignUpStep2() {
                             const formatted = dayjs(date).format("DD/MM/YYYY");
                             setFormData({ ...formData, birthDate: formatted });
 
-                            // 🔥 Close modal automatically
+                            //Close modal automatically
                             setShowPicker(false);
                           }}
                         />

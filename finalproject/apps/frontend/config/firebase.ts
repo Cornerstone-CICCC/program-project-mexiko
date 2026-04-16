@@ -1,10 +1,9 @@
-// frontend/config/firebase.ts
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  sendEmailVerification 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification
 } from 'firebase/auth';
 import {
   FIREBASE_API_KEY,
@@ -31,9 +30,9 @@ const auth = getAuth(app);
 
 console.log('✅ Firebase Auth initialized');
 
-export { 
-  auth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  sendEmailVerification 
+export {
+  auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification
 };
