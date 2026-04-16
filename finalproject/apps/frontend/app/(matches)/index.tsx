@@ -4,83 +4,112 @@ import {
     SafeAreaView,
     ScrollView,
     StyleSheet,
+    ActivityIndicator,
   } from "react-native";
+  import { useEffect, useState } from "react";
+  
   import FeaturedMatchCard from "@/components/FeaturedMatchCard";
   import CompactMatchCard from "@/components/CompactMatchCard";
-  
-  const featured = [
-    {
-      mbti: "ENFP",
-      score: 94,
-      tags: ["Creative", "Enthusiastic", "Spontaneous"],
-    },
-    {
-      mbti: "ENTP",
-      score: 91,
-      tags: ["Innovative", "Curious", "Quick-witted"],
-    },
-    {
-      mbti: "INFP",
-      score: 88,
-      tags: ["Idealistic", "Empathetic", "Authentic"],
-    },
-  ];
-  
-  const others = [
-    {
-      mbti: "INTJ",
-      score: 82,
-      tags: ["Strategic", "Independent", "Analytical"],
-    },
-    {
-      mbti: "ENFJ",
-      score: 79,
-      tags: ["Charismatic", "Warm", "Inspiring"],
-    },
-  ];
+  import { getMatches, MatchUiItem } from "@/services/matchService";
   
   export default function MatchesScreen() {
+    const [matches, setMatches] = useState<MatchUiItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+  
+    useEffect(() => {
+      const fetchMatches = async () => {
+        try {
+          const data = await getMatches();
+          setMatches(data);
+        } catch (err: any) {
+          setError(err.message || "Failed to load matches");
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchMatches();
+    }, []);
+  
+    const featured = matches.slice(0, 3);
+    const others = matches.slice(3);
+  
+    if (loading) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centerState}>
+            <ActivityIndicator size="large" />
+            <Text style={styles.stateText}>Loading matches...</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+  
+    if (error) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centerState}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+  
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Today's Matches</Text>
+          <Text style={styles.title}>T</Text>
   
-          <Text style={styles.subtitle}>
-            5 carefully selected matches for you
-          </Text>
+          <Text style={styles.subtitle}>{matches.length} matches for you</Text>
   
           <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              New matches refresh every 24 hours
-            </Text>
+            <Text style={styles.infoText}>New matches refresh every 24 hours</Text>
           </View>
   
-          <Text style={styles.sectionLabel}>↗ TOP COMPATIBILITY</Text>
+          {featured.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>↗ TOP COMPATIBILITY</Text>
   
-          {featured.map((item, index) => (
-            <FeaturedMatchCard
-              key={index}
-              mbti={item.mbti}
-              score={item.score}
-              tags={item.tags}
-            />
-          ))}
+              {featured.map((item) => (
+                <FeaturedMatchCard
+                  key={item.id}
+                  mbti={item.mbti}
+                  score={item.score}
+                  tags={item.tags}
+                />
+              ))}
+            </>
+          )}
   
-          <Text style={[styles.sectionLabel, styles.moreSection]}>
-            ✧ MORE MATCHES
-          </Text>
+          {others.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, styles.moreSection]}>
+                ✧ MORE MATCHES
+              </Text>
   
-          {others.map((item, index) => (
-            <CompactMatchCard
-              key={index}
-              mbti={item.mbti}
-              score={item.score}
-              tags={item.tags}
-            />
-          ))}
+              {others.map((item) => (
+                <CompactMatchCard
+                  key={item.id}
+                  mbti={item.mbti}
+                  score={item.score}
+                  tags={item.tags}
+                />
+              ))}
+            </>
+          )}
+  
+          {!matches.length && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No matches yet</Text>
+              <Text style={styles.emptyText}>
+                Your daily matches will appear here once they are generated.
+              </Text>
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     );
@@ -129,5 +158,41 @@ import {
     },
     moreSection: {
       marginTop: 10,
+    },
+    centerState: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+    },
+    stateText: {
+      marginTop: 12,
+      fontSize: 15,
+      color: "#6B7280",
+    },
+    errorText: {
+      fontSize: 15,
+      color: "#DC2626",
+      textAlign: "center",
+    },
+    emptyState: {
+      marginTop: 24,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 18,
+      paddingVertical: 24,
+      paddingHorizontal: 18,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#111827",
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    emptyText: {
+      fontSize: 14,
+      color: "#6B7280",
+      textAlign: "center",
+      lineHeight: 20,
     },
   });
