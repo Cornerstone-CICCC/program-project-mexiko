@@ -64,10 +64,17 @@ export default function Login() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-purple-700">
-      <View className="flex-1 items-center justify-center px-6 py-10">
-
+    <ScrollView
+      className="flex-1 bg-purple-700"
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingVertical: 40,
+      }}
+    >
+      <View className="items-center px-6">
         <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
+
 
           <TouchableOpacity
             onPress={() => router.push('/')}
@@ -145,8 +152,8 @@ export default function Login() {
                 className="flex-row items-center gap-2"
               >
                 <View className={`w-4 h-4 border rounded ${rememberMe
-                    ? 'bg-purple-600 border-purple-600'
-                    : 'border-gray-300 bg-white'
+                  ? 'bg-purple-600 border-purple-600'
+                  : 'border-gray-300 bg-white'
                   }`}>
                   {rememberMe && (
                     <Feather name="check" size={12} color="white" style={{ alignSelf: 'center' }} />
