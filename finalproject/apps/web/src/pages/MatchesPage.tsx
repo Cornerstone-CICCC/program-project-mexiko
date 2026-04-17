@@ -2,26 +2,22 @@ import { useEffect, useState } from 'react'
 import StatusBadge from '../components/ui/StatusBadge'
 import { getMatches } from '../services/matchService'
 
-interface MatchUser {
-  _id?: string
-  id?: string
-  email?: string
-  fullName?: {
-    first?: string
-    last?: string
+type MatchItem = {
+  matchId: string
+  targetUserId: string
+  synergyScore: number
+  isOpened: boolean
+  recommendedAt: string
+  expiresAt: string
+  targetUser: {
+    email?: string
+    fullName?: {
+      first?: string
+      last?: string
+    }
+    mbtiType?: string
+    bio?: string
   }
-}
-
-interface MatchItem {
-  _id?: string
-  id?: string
-  users?: MatchUser[]
-  userA?: MatchUser
-  userB?: MatchUser
-  status?: string
-  synergyScore?: number
-  compatibilityScore?: number
-  createdAt?: string
 }
 
 export default function MatchesPage() {
@@ -29,56 +25,23 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const getUserDisplayName = (user?: MatchUser) => {
-    if (!user) return 'Unknown User'
-
-    const fullName = [user.fullName?.first, user.fullName?.last]
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-
-    if (fullName) return fullName
-    if (user.email) return user.email
-
-    return 'Unknown User'
+  const getUserDisplayName = (match: MatchItem) => {
+    const first = match.targetUser?.fullName?.first || ''
+    const last = match.targetUser?.fullName?.last || ''
+    return `${first} ${last}`.trim() || match.targetUser?.email || 'Unknown'
   }
 
-  const getPairDisplay = (match: MatchItem) => {
-    if (Array.isArray(match.users) && match.users.length >= 2) {
-      return `${getUserDisplayName(match.users[0])} & ${getUserDisplayName(match.users[1])}`
-    }
-
-    if (match.userA || match.userB) {
-      return `${getUserDisplayName(match.userA)} & ${getUserDisplayName(match.userB)}`
-    }
-
-    return 'Unknown Pair'
+  const getMbtiDisplay = (match: MatchItem) => {
+    return match.targetUser?.mbtiType || 'N/A'
   }
 
-  const getScoreDisplay = (match: MatchItem) => {
-    if (typeof match.synergyScore === 'number') return `${match.synergyScore}%`
-    if (typeof match.compatibilityScore === 'number') return `${match.compatibilityScore}%`
-    return '-'
-  }
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-'
 
-  const normalizeStatus = (status?: string) => {
-    if (!status) return 'pending'
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return '-'
 
-    const normalized = status.toLowerCase()
-
-    if (normalized.includes('accept')) return 'resolved'
-    if (normalized.includes('match')) return 'reviewing'
-    if (normalized.includes('pending')) return 'pending'
-    if (normalized.includes('active')) return 'reviewing'
-    if (normalized.includes('success')) return 'resolved'
-    if (normalized.includes('reject')) return 'pending'
-
-    return 'reviewing'
-  }
-
-  const getStatusLabel = (status?: string) => {
-    if (!status) return 'Pending'
-    return status
+    return date.toLocaleDateString()
   }
 
   const loadMatches = async () => {
@@ -87,16 +50,7 @@ export default function MatchesPage() {
       setError(null)
 
       const data = await getMatches()
-
-      const normalizedMatches = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.matches)
-          ? data.matches
-          : Array.isArray(data?.data)
-            ? data.data
-            : []
-
-      setMatches(normalizedMatches)
+      setMatches(data as MatchItem[])
     } catch (err) {
       console.error(err)
       setError('Could not load matches.')
@@ -133,28 +87,48 @@ export default function MatchesPage() {
           <table className="min-w-full">
             <thead className="bg-slate-50">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                <th className="px-6 py-4">Pair</th>
+                <th className="px-6 py-4">User</th>
+                <th className="px-6 py-4">MBTI</th>
                 <th className="px-6 py-4">Score</th>
+                <th className="px-6 py-4">Recommended</th>
+                <th className="px-6 py-4">Expires</th>
                 <th className="px-6 py-4">Status</th>
               </tr>
             </thead>
             <tbody>
               {matches.map((match) => (
                 <tr
-                  key={match._id || match.id}
+                  key={`${match.matchId}-${match.targetUserId}`}
                   className="border-t border-[var(--color-border)]"
                 >
-                  <td className="px-6 py-5 font-medium text-slate-800">
-                    {getPairDisplay(match)}
+                  <td className="px-6 py-5">
+                    <div className="font-medium text-slate-800">
+                      {getUserDisplayName(match)}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {match.targetUser?.email || 'No email'}
+                    </div>
                   </td>
 
                   <td className="px-6 py-5 text-slate-600">
-                    {getScoreDisplay(match)}
+                    {getMbtiDisplay(match)}
+                  </td>
+
+                  <td className="px-6 py-5 text-slate-600">
+                    {match.synergyScore}%
+                  </td>
+
+                  <td className="px-6 py-5 text-slate-600">
+                    {formatDate(match.recommendedAt)}
+                  </td>
+
+                  <td className="px-6 py-5 text-slate-600">
+                    {formatDate(match.expiresAt)}
                   </td>
 
                   <td className="px-6 py-5">
-                    <StatusBadge variant={normalizeStatus(match.status)}>
-                      {getStatusLabel(match.status)}
+                    <StatusBadge variant={match.isOpened ? 'resolved' : 'pending'}>
+                      {match.isOpened ? 'Opened' : 'New'}
                     </StatusBadge>
                   </td>
                 </tr>
@@ -163,7 +137,7 @@ export default function MatchesPage() {
               {!matches.length ? (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={6}
                     className="px-6 py-8 text-center text-sm text-slate-500"
                   >
                     No matches found.
