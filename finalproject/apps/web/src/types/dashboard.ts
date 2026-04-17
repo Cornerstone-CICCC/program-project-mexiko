@@ -27,9 +27,23 @@ export interface RecentUser {
   joined: string;
 }
 
+export interface ReportUser {
+  _id: string;
+  email?: string;
+  fullName?: {
+    first?: string;
+    last?: string;
+  };
+  isSuspended?: boolean;
+}
+
 export interface ReportItem {
-  id: string;
-  reporter: string;
-  type: string;
-  status: 'Pending' | 'Reviewing' | 'Resolved';
+  _id: string;
+  reporterId?: string | ReportUser;
+  targetId?: string | ReportUser;
+  category?: 'Abuse' | 'Harassment' | 'FakeProfile' | 'Spam' | 'Other';
+  description?: string;
+  status?: 'Pending' | 'Resolved' | 'Dismissed';
+  adminAction?: string;
+  createdAt?: string;
 }

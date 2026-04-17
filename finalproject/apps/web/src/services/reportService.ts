@@ -1,13 +1,14 @@
 import api from './api';
+import type { ReportItem } from '../types/dashboard';
 
 export async function getReports() {
   const response = await api.get('/reports');
-  return response.data;
+  return response.data as { message: string; reports: ReportItem[] };
 }
 
 export async function getReportById(id: string) {
   const response = await api.get(`/reports/${id}`);
-  return response.data;
+  return response.data as ReportItem;
 }
 
 export async function createReport(payload: Record<string, unknown>) {

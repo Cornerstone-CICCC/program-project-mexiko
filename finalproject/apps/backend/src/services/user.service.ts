@@ -10,7 +10,6 @@ export const verifyFirebaseToken = async (idToken: string) => {
   try {
     console.log("🔵 [SERVICE] Verifying Firebase token...");
 
-    // Verify that Firebase Admin is initialized
     if (!admin.apps.length) {
       throw new Error(
         "Firebase Admin is not initialized. Please initialize it before calling this function.",
@@ -33,7 +32,6 @@ export const createUser = async (userData: any) => {
   try {
     console.log("🔵 [SERVICE] Creating user in MongoDB...");
 
-    // Ensure fullName has the correct structure
     const userToCreate = {
       firebaseUid: userData.firebaseUid,
       email: userData.email,
@@ -78,6 +76,7 @@ export const updateUserInfo = async (idOrUid: string, updateData: any) => {
     "preferredDistance",
     "Interests",
     "mbtiTestchecked",
+    "isSuspended",
   ];
 
   console.log("id", id);
@@ -140,7 +139,6 @@ export const deactivateUser = async (id: string) => {
   console.log("deactivateUser - ID length:", id?.length);
 
   try {
-    // Verify if the ID is a valid MongoDB ObjectId
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     console.log("Is valid ObjectId:", isValidObjectId);
 
@@ -148,7 +146,6 @@ export const deactivateUser = async (id: string) => {
       console.log(
         "ID is not a valid MongoDB ObjectId, trying to find by firebaseUid first",
       );
-      // Search for user by firebaseUid first (since id might be the firebaseUid)
       const userByFirebaseUid = await User.findOne({ firebaseUid: id });
       if (userByFirebaseUid) {
         console.log("Found user by firebaseUid:", userByFirebaseUid._id);
@@ -162,7 +159,6 @@ export const deactivateUser = async (id: string) => {
       }
     }
 
-    // If ID is a valid ObjectId or user not found by firebaseUid, try to find by _id
     const result = await User.findByIdAndUpdate(
       id,
       { isDeleted: true, deletedAt: new Date() },

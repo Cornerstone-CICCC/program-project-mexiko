@@ -5,11 +5,11 @@ import { LinearGradient } from "expo-linear-gradient";
 export default function Home() {
   return (
     <View className="flex-1 bg-purple-700">
-      {/* Contenedor principal con padding consistente */}
+      {/* Principal container with padding */}
       <View className="flex-1 items-center px-6 py-12">
-        {/* Contenedor central que agrupa todo el contenido principal */}
+        {/* Central container that groups all the main content */}
         <View className="flex-1 w-full max-w-sm justify-center">
-          {/* Logo y eslogan */}
+          {/* Logo and slogan */}
           <View className="items-center gap-3 mb-8">
             <Image
               source={require("../../assets/images/logo.png")}
@@ -26,7 +26,7 @@ export default function Home() {
             </Text>
           </View>
 
-          {/* Imagen central */}
+          {/* Central image */}
           <View className="items-center justify-center mb-6">
             <Image
               source={require("../../assets/images/discover.png")}
@@ -35,7 +35,7 @@ export default function Home() {
             />
           </View>
 
-          {/* Textos principales */}
+          {/* Main texts */}
           <View className="gap-4">
             <Text className="text-white text-3xl font-bold text-center leading-tight">
               Discover Your{"\n"}Personality Connection
@@ -47,7 +47,7 @@ export default function Home() {
             </Text>
           </View>
 
-          {/* Botones */}
+          {/* Buttons */}
           <View className="w-full items-center gap-3 mt-10">
             <Link href="/signup" asChild>
               <TouchableOpacity className="w-full py-4 bg-white rounded-2xl shadow-lg active:bg-gray-100">
@@ -67,7 +67,7 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Enlaces inferiores */}
+        {/* Bottom links */}
         <View className="w-full max-w-sm flex-row justify-between pt-4">
           <TouchableOpacity className="active:opacity-70">
             <Link href="/(dashboard)/" asChild>

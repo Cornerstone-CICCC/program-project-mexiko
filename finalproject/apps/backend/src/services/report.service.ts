@@ -7,8 +7,8 @@ export const getReports = async (
   limit: number,
 ) => {
   return await Report.find(query)
-    .populate("reporterId", "name email")
-    .populate("targetId", "name")
+    .populate("reporterId", "fullName email")
+    .populate("targetId", "fullName email isSuspended")
     .limit(limit)
     .skip((page - 1) * limit)
     .sort({ createdAt: -1 });
@@ -21,14 +21,23 @@ export const createManyReports = async (
   const data = reportItems.map((item) => ({
     ...item,
     reporterId: new mongoose.Types.ObjectId(reporterId),
+    targetId: item.targetId
+      ? new mongoose.Types.ObjectId(item.targetId as string)
+      : undefined,
+    chatRoomId: item.chatRoomId
+      ? new mongoose.Types.ObjectId(item.chatRoomId as string)
+      : undefined,
     status: "Pending" as const,
     evidenceImages: item.evidenceImages || [],
   }));
+
   return await Report.insertMany(data);
 };
 
 export const findReportById = async (id: string) => {
-  return await Report.findById(id);
+  return await Report.findById(id)
+    .populate("reporterId", "fullName email")
+    .populate("targetId", "fullName email isSuspended");
 };
 
 export const updateReport = async (
@@ -39,7 +48,9 @@ export const updateReport = async (
     id,
     { $set: reportInfo },
     { new: true, runValidators: true },
-  );
+  )
+    .populate("reporterId", "fullName email")
+    .populate("targetId", "fullName email isSuspended");
 };
 
 export const deleteReport = async (id: string) => {

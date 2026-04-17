@@ -35,8 +35,9 @@ console.log("✅ Variables de entorno verificadas");
 
 import "./config/firebase-admin";
 
-// ===== CRON =====
-cron.schedule("0 8 * * *", async () => {
+// ===== CRON ===== batch
+cron.schedule("00 08 * * *", async () => {
+  // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
     await generateDailyMatches();
@@ -49,12 +50,20 @@ cron.schedule("0 8 * * *", async () => {
 const app = express();
 const httpServer = createServer(app);
 
+<<<<<<< HEAD
 // ===== SHARED ORIGINS =====
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:19006",
   "http://localhost:8082",
+=======
+// ===== SOCKET.IO =====
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:19006",
+  "http://localhost:8081",
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 ];
 
 // ===== SOCKET.IO =====
@@ -85,6 +94,11 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+<<<<<<< HEAD
+=======
+// 🔥 FIX CORS (web + expo + postman safe)
+
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 app.use(
   cors({
     origin: (origin, callback) => {

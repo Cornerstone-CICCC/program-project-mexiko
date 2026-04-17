@@ -4,7 +4,7 @@ export interface IMessage extends Document {
   chatRoomId: string;
   senderId: string;
   content: string;
-  messageType: "text" | "image" | "voice";
+  messageType: "text" | "image" | "voice" | "video";
   isRead: boolean;
   isDelivered: boolean;
   createdAt: Date;
@@ -29,7 +29,7 @@ const MessageSchema = new Schema<IMessage>(
     },
     messageType: {
       type: String,
-      enum: ["text", "image", "voice"],
+      enum: ["text", "image", "voice", "video"],
       default: "text",
     },
     isRead: {

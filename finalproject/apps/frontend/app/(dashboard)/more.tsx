@@ -1,23 +1,26 @@
-// app/(more)/index.tsx
 import { useState } from "react";
 import { router } from "expo-router";
 import {
-  Alert,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
   ActivityIndicator,
+  Platform,
+  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import SettingRow from "@/components/SettingRow";
-import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
 import Toast from "react-native-toast-message";
-import authService from "@/services/auth.services";
+
+import SettingRow from "@/components/SettingRow";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import DeleteAccountModal from "@/components/DeleteAccountModal";
-import API_BASE_URL, { API_ENDPOINTS } from "@/config/api";
+
+import { auth } from "../../config/firebase";
+import authService from "@/services/auth.services";
+import { API_ENDPOINTS } from "@/config/api";
+
 export default function MoreScreen() {
   const [newMessageAlerts, setNewMessageAlerts] = useState(true);
   const [doNotDisturb, setDoNotDisturb] = useState(false);
@@ -27,7 +30,6 @@ export default function MoreScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
-  // Get current user info
   const currentUser = auth.currentUser;
   const userEmail = currentUser?.email || "No email";
   const userId = currentUser?.uid;
@@ -36,13 +38,10 @@ export default function MoreScreen() {
     setIsLoggingOut(true);
 
     try {
-      // Firebase logout
       await signOut(auth);
-      console.log("✅ Firebase logout successful");
 
-      // Backend logout (opcional)
       try {
-        await fetch(`${API_ENDPOINTS.LOGOUT}`, {
+        await fetch(API_ENDPOINTS.LOGOUT, {
           method: "POST",
           credentials: "include",
         });
@@ -61,6 +60,7 @@ export default function MoreScreen() {
       router.replace("/(auth)/login");
     } catch (error: any) {
       console.error("Logout error:", error);
+
       Toast.show({
         type: "error",
         text1: "Logout Failed",
@@ -89,7 +89,6 @@ export default function MoreScreen() {
     setDeleteModalVisible(false);
 
     try {
-      // Delete account via authService (which calls the backend)
       await authService.deleteAccount();
 
       Toast.show({
@@ -100,12 +99,12 @@ export default function MoreScreen() {
         visibilityTime: 3000,
       });
 
-      // Redirigir al login
       setTimeout(() => {
         router.replace("/(auth)/login");
       }, 1500);
     } catch (error: any) {
       console.error("Delete account error:", error);
+
       Toast.show({
         type: "error",
         text1: "Delete Failed",
@@ -120,9 +119,7 @@ export default function MoreScreen() {
 
   if (isLoggingOut || isDeleting) {
     return (
-      <SafeAreaView
-        style={[styles.container, { flex: 1, backgroundColor: "#F9FAFB" }]}
-      >
+      <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6A11CB" />
           <Text style={styles.loadingText}>
@@ -138,81 +135,97 @@ export default function MoreScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         <Text style={styles.title}>More</Text>
 
         <SectionTitle title="Account" />
-        <SettingRow
-          label="ID"
-          icon="card-outline"
-          rightText={currentUser?.uid?.slice(0, 8) || "Not available"}
-          onPress={() =>
-            Alert.alert("Account ID", currentUser?.uid || "No ID available")
-          }
-        />
-        <SettingRow
-          label="Email"
-          icon="mail-outline"
-          rightText={userEmail}
-          onPress={() => Alert.alert("Email", userEmail)}
-        />
-        <SettingRow
-          label="Log Out"
-          icon="log-out-outline"
-          danger
-          onPress={() => setModalVisible(true)}
-        />
-        <SettingRow
-          label="Delete Account"
-          icon="trash-outline"
-          danger
-          onPress={() => setDeleteModalVisible(true)}
-        />
+        <View style={styles.card}>
+          <SettingRow
+            label="ID"
+            icon="card-outline"
+            rightText={currentUser?.uid?.slice(0, 8) || "Not available"}
+            onPress={() =>
+              Alert.alert("Account ID", currentUser?.uid || "No ID available")
+            }
+          />
+          <Divider />
+          <SettingRow
+            label="Email"
+            icon="mail-outline"
+            rightText={userEmail}
+            onPress={() => Alert.alert("Email", userEmail)}
+          />
+          <Divider />
+          <SettingRow
+            label="Log Out"
+            icon="log-out-outline"
+            danger
+            onPress={() => setModalVisible(true)}
+          />
+          <Divider />
+          <SettingRow
+            label="Delete Account"
+            icon="trash-outline"
+            danger
+            onPress={() => setDeleteModalVisible(true)}
+          />
+        </View>
 
         <SectionTitle title="Notifications" />
-        <SettingRow
-          label="New Message Alerts"
-          icon="notifications-outline"
-          hasSwitch
-          switchValue={newMessageAlerts}
-          onSwitchChange={setNewMessageAlerts}
-        />
-        <SettingRow
-          label="Do Not Disturb"
-          icon="moon-outline"
-          hasSwitch
-          switchValue={doNotDisturb}
-          onSwitchChange={setDoNotDisturb}
-        />
-        <SettingRow
-          label="Message Preview"
-          icon="chatbubble-ellipses-outline"
-          hasSwitch
-          switchValue={messagePreview}
-          onSwitchChange={setMessagePreview}
-        />
+        <View style={styles.card}>
+          <SettingRow
+            label="New Message Alerts"
+            icon="notifications-outline"
+            hasSwitch
+            switchValue={newMessageAlerts}
+            onSwitchChange={setNewMessageAlerts}
+          />
+          <Divider />
+          <SettingRow
+            label="Do Not Disturb"
+            icon="moon-outline"
+            hasSwitch
+            switchValue={doNotDisturb}
+            onSwitchChange={setDoNotDisturb}
+          />
+          <Divider />
+          <SettingRow
+            label="Message Preview"
+            icon="chatbubble-ellipses-outline"
+            hasSwitch
+            switchValue={messagePreview}
+            onSwitchChange={setMessagePreview}
+          />
+        </View>
 
         <SectionTitle title="Privacy" />
-        <SettingRow
-          label="Privacy Settings"
-          icon="shield-outline"
-          onPress={() => router.push("/(more)/privacy")}
-        />
+        <View style={styles.card}>
+          <SettingRow
+            label="Privacy Settings"
+            icon="shield-outline"
+            onPress={() => router.push("/(more)/privacy")}
+          />
+        </View>
 
         <SectionTitle title="About" />
-        <SettingRow
-          label="About MindMatch"
-          icon="information-circle-outline"
-          rightText="v1.0.0"
-          onPress={() => router.push("/(more)/about")}
-        />
+        <View style={styles.card}>
+          <SettingRow
+            label="About MindMatch"
+            icon="information-circle-outline"
+            rightText="v1.0.0"
+            onPress={() => router.push("/(more)/about")}
+          />
+        </View>
 
         <SectionTitle title="Help" />
-        <SettingRow
-          label="Help Center"
-          icon="help-circle-outline"
-          onPress={() => router.push("/(more)/help")}
-        />
+        <View style={styles.card}>
+          <SettingRow
+            label="Help Center"
+            icon="help-circle-outline"
+            onPress={() => router.push("/(more)/help")}
+          />
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerTitle}>MindMatch v1.0.0</Text>
@@ -245,51 +258,82 @@ function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F3F2F7",
   },
+
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: Platform.OS === "ios" ? 22 : 20,
+    paddingBottom: 140,
   },
+
   title: {
     fontSize: 32,
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 22,
+    marginTop: 8,
+    marginBottom: 40,
   },
+
   sectionTitle: {
     fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.4,
+    fontWeight: "600",
+    letterSpacing: 0.2,
     color: "#6B7280",
-    marginBottom: 10,
     marginTop: 10,
+    marginBottom: 10,
+    paddingHorizontal: 6,
   },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 32,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "#ECEEF2",
+    marginLeft: 58,
+  },
+
   footer: {
     alignItems: "center",
-    marginTop: 26,
+    marginTop: 4,
     paddingBottom: 12,
+    paddingHorizontal: 16,
   },
+
   footerTitle: {
     fontSize: 13,
     color: "#9CA3AF",
     marginBottom: 4,
   },
+
   footerSubtitle: {
     fontSize: 12,
     color: "#B0B7C3",
     textAlign: "center",
+    lineHeight: 18,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F3F2F7",
   },
+
   loadingText: {
     marginTop: 12,
     fontSize: 16,

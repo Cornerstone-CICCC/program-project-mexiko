@@ -1,4 +1,4 @@
-export type MessageType = "text" | "image" | "voice";
+export type MessageType = "text" | "image" | "voice" | "video";
 
 export interface IMessage {
   chatRoomId: string;
