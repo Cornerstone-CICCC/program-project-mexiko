@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import React, { useState } from "react";
-import { Stack, Link, useLocalSearchParams } from "expo-router";
+import { Stack, Link, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { Switch } from "react-native";

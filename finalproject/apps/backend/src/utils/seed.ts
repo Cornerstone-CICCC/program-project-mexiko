@@ -112,4 +112,4 @@ const seedUsers = async (count: number) => {
   }
 };
 
-seedUsers(100);
+seedUsers(200);

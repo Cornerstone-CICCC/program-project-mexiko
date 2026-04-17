@@ -21,17 +21,17 @@ import { generateDailyMatches } from "./services/match.service";
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 //firebase admin initialization moved to separate file for better error handling and modularity
-console.log("🔍 Verify enviroment variables...");
+console.log("🔍 Verificando variables de entorno...");
 if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error("❌ FIREBASE_PROJECT_ID is not defined");
+  console.error("❌ FIREBASE_PROJECT_ID no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  console.error("❌ FIREBASE_CLIENT_EMAIL is not defined");
+  console.error("❌ FIREBASE_CLIENT_EMAIL no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_PRIVATE_KEY) {
-  console.error("❌ FIREBASE_PRIVATE_KEY is not defined");
+  console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
   process.exit(1);
 }
 console.log("✅ Variables de entorno verificadas");
@@ -39,8 +39,9 @@ console.log("✅ Variables de entorno verificadas");
 // Inicializar Firebase Admin (importar esto ejecuta la inicialización)
 import "./config/firebase-admin";
 
-// ===== CRON =====
-cron.schedule("0 8 * * *", async () => {
+// ===== CRON ===== batch
+cron.schedule("00 08 * * *", async () => {
+  // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
     await generateDailyMatches();
@@ -117,12 +118,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    },
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
   }),
 );
 
