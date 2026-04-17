@@ -4,12 +4,17 @@ import * as matchService from "../services/match.service";
 export const getMatches = async (req: Request, res: Response) => {
   try {
     const firebaseUid = req.userId;
-    const list = await matchService.getMatchingList(firebaseUid!);
+
+    if (!firebaseUid) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const list = await matchService.getMatchingList(firebaseUid);
     return res.status(200).json({ data: list });
   } catch (e: unknown) {
     const message =
       e instanceof Error ? e.message : "Failed to fetch matching list.";
-    return res.status(400).json({ error: message });
+    return res.status(500).json({ error: message });
   }
 };
 
@@ -18,8 +23,16 @@ export const applyMatch = async (req: Request, res: Response) => {
     const firebaseUid = req.userId;
     const { targetUserId } = req.body;
 
+    if (!firebaseUid) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: "targetUserId is required." });
+    }
+
     const match = await matchService.createMatchRequest(
-      firebaseUid!,
+      firebaseUid,
       targetUserId,
     );
 
@@ -38,8 +51,16 @@ export const handleMatchInteraction = async (req: Request, res: Response) => {
     const matchId = req.params.matchId as string;
     const { targetUserId } = req.body;
 
+    if (!firebaseUid) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: "targetUserId is required." });
+    }
+
     const chatRoomId = await matchService.processMatchInteraction(
-      firebaseUid!,
+      firebaseUid,
       matchId,
       targetUserId,
     );

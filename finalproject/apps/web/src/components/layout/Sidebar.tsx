@@ -1,20 +1,11 @@
-import {
-  BarChart3,
-  Heart,
-  LogOut,
-  Settings,
-  ShieldAlert,
-  Users,
-} from 'lucide-react'
+import { BarChart3, Heart, LogOut, ShieldAlert, Users } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: BarChart3 },
   { to: '/users', label: 'Users', icon: Users },
-  { to: '/matches', label: 'Matches', icon: Heart },
   { to: '/reports', label: 'Reports', icon: ShieldAlert },
-  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar() {
