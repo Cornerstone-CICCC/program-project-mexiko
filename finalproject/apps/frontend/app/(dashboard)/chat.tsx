@@ -40,6 +40,10 @@ const chat = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRoom1, setShowRoom1] = useState(true);
+  const [targetInfo, setTargetInfo] = useState<{
+    mbti: string;
+    score: number;
+  } | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState(
     "qxLtr5RqApbDDBvr5OTifLA70P33",
@@ -258,16 +262,27 @@ const chat = () => {
             <ActivityIndicator size="small" color="#4F46E5" />
           ) : (
             rooms.map((room) => {
-              const otherParticipant = room.participants.find(
-                (p) => p.firebaseUid !== currentUserId,
-              );
+              if (!room.participants || !Array.isArray(room.participants))
+                return null;
 
               const me = room.participants.find(
                 (p) => p.firebaseUid === currentUserId,
               );
 
-              const targetMbti = otherParticipant?.mbtiType || "ESTJ";
-              const myMbti = me?.mbtiType || "ENFP";
+              const otherParticipant = room.participants.find(
+                (p) =>
+                  p.firebaseUid &&
+                  String(p.firebaseUid) !== String(currentUserId),
+              );
+
+              const targetMbti =
+                otherParticipant?.mbtiType ||
+                (otherParticipant as any)?.mbti ||
+                "---";
+
+              const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
+
+              console.log("console.log(room.participants)", room.participants);
 
               const synergyScore = calculateSynergy(myMbti, targetMbti);
 
@@ -275,7 +290,7 @@ const chat = () => {
                 <Pressable
                   key={room._id}
                   onPress={() => router.push(`/(chat)/room/${room.roomId}`)}
-                  onLongPress={() => handleLeaveChat(room._id)}
+                  onLongPress={() => handleLeaveChat(room.roomId)}
                   className="flex-row items-center mb-6"
                   style={styles.cardContainer}
                 >

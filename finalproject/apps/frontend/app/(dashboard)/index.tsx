@@ -5,23 +5,55 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Alert,
+  Pressable,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import FeaturedMatchCard from "@/components/FeaturedMatchCard";
 import CompactMatchCard from "@/components/CompactMatchCard";
-import { getMatches, MatchUiItem } from "@/services/matchService";
+import {
+  getMatches,
+  MatchUiItem,
+  openMatchChat,
+} from "@/services/matchService";
+import { auth } from "@/config/firebase";
+import { useRouter, useFocusEffect } from "expo-router";
 
 export default function MatchesScreen() {
   const [matches, setMatches] = useState<MatchUiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const router = useRouter();
+
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const data = await getMatches();
-        setMatches(data);
+        setLoading(true);
+        const user = auth.currentUser;
+
+        if (!user) {
+          throw new Error("You need log-in.");
+        }
+
+        console.log("user.uid", user.uid);
+
+        const userResponse = await fetch(
+          `http://localhost:3500/users/${user.uid}`,
+        );
+
+        const userData = await userResponse.json();
+
+        if (!userResponse.ok) {
+          throw new Error("Failed to load user info");
+        }
+
+        const myMbti = userData.mbtiType || "ISTP";
+
+        const data = await getMatches(myMbti);
+
+        setMatches(data.filter((m) => !m.isOpened));
       } catch (err: any) {
         setError(err.message || "Failed to load matches");
       } finally {
@@ -33,7 +65,9 @@ export default function MatchesScreen() {
   }, []);
 
   const featured = matches.slice(0, 3);
+  //console.log("featured", featured);
   const others = matches.slice(3);
+  //console.log("others", others);
 
   if (loading) {
     return (
@@ -55,6 +89,19 @@ export default function MatchesScreen() {
       </SafeAreaView>
     );
   }
+
+  const handleCardPress = async (matchId: string, targetUserId: string) => {
+    try {
+      const chatRoomId = await openMatchChat(matchId, targetUserId);
+      console.log("handleCardPress chatRoomId", chatRoomId);
+      //setMatches((prev) => prev.filter((m) => m.matchId !== matchId));
+      //setMatches((prev) => prev.filter((m) => m.targetUserId !== targetUserId));
+
+      router.push(`/(chat)/room/${chatRoomId}`);
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,12 +126,17 @@ export default function MatchesScreen() {
             <Text style={styles.sectionLabel}>↗ TOP COMPATIBILITY</Text>
 
             {featured.map((item) => (
-              <FeaturedMatchCard
+              <Pressable
                 key={item.id}
-                mbti={item.mbti}
-                score={item.score}
-                tags={item.tags}
-              />
+                onPress={() => handleCardPress(item.matchId, item.targetUserId)}
+              >
+                <FeaturedMatchCard
+                  key={item.id}
+                  mbti={item.mbti}
+                  score={item.score}
+                  tags={item.tags}
+                />
+              </Pressable>
             ))}
           </>
         )}
@@ -96,12 +148,17 @@ export default function MatchesScreen() {
             </Text>
 
             {others.map((item) => (
-              <CompactMatchCard
+              <Pressable
                 key={item.id}
-                mbti={item.mbti}
-                score={item.score}
-                tags={item.tags}
-              />
+                onPress={() => handleCardPress(item.matchId, item.targetUserId)}
+              >
+                <CompactMatchCard
+                  key={item.id}
+                  mbti={item.mbti}
+                  score={item.score}
+                  tags={item.tags}
+                />
+              </Pressable>
             ))}
           </>
         )}

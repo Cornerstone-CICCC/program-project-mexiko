@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from "@/config/api";
+import { calculateSynergy, MBTI_DETAILS } from "@/utils/mbti";
 
 export type MatchApiItem = {
   matchId: string;
@@ -55,8 +56,12 @@ const getFullName = (
   return `${first} ${last}`.trim() || "Unknown User";
 };
 
-const mapMatchToUi = (item: MatchApiItem): MatchUiItem => {
+//const mapMatchToUi = (item: MatchApiItem): MatchUiItem => {
+const mapMatchToUi = (item: MatchApiItem, myMbti: string): MatchUiItem => {
+  const targetMbti = item.targetUser?.mbtiType || "N/A";
   const mbti = item.targetUser?.mbtiType || "N/A";
+  const mbtiInfo = MBTI_DETAILS[targetMbti];
+  const tags = mbtiInfo?.traits ?? ["Compatible", "Interesting", "Potential"];
 
   return {
     matchId: item.matchId,
@@ -65,9 +70,14 @@ const mapMatchToUi = (item: MatchApiItem): MatchUiItem => {
     name: getFullName(item.targetUser?.fullName),
     email: item.targetUser?.email ?? "No email",
     mbti,
-    score: Math.round(item.synergyScore),
-    tags:
-      fallbackTagsByMbti[mbti] ?? ["Compatible", "Interesting", "Potential"],
+    //score: Math.round(item.synergyScore),
+    score: calculateSynergy(myMbti, targetMbti),
+    // tags: fallbackTagsByMbti[mbti] ?? [
+    //   "Compatible",
+    //   "Interesting",
+    //   "Potential",
+    // ],
+    tags: tags,
     bio: item.targetUser?.bio ?? "",
     isOpened: item.isOpened,
     recommendedAt: item.recommendedAt,
@@ -75,7 +85,8 @@ const mapMatchToUi = (item: MatchApiItem): MatchUiItem => {
   };
 };
 
-export async function getMatches(): Promise<MatchUiItem[]> {
+//export async function getMatches(): Promise<MatchUiItem[]> {
+export async function getMatches(myMbti: string): Promise<MatchUiItem[]> {
   const response = await fetch(API_ENDPOINTS.MATCHES, {
     method: "GET",
     credentials: "include",
@@ -96,5 +107,30 @@ export async function getMatches(): Promise<MatchUiItem[]> {
     throw new Error("Invalid response from server");
   }
 
-  return data.data.map(mapMatchToUi);
+  //return data.data.map(mapMatchToUi);
+
+  const mappedData = data.data.map((item) => mapMatchToUi(item, myMbti));
+
+  //return data.data.map((item) => mapMatchToUi(item, myMbti));
+  return mappedData.sort((a, b) => b.score - a.score);
+}
+
+export async function openMatchChat(
+  matchId: string,
+  targetUserId: string,
+): Promise<string> {
+  const response = await fetch(
+    `http://localhost:3500/match/${matchId}/interact`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUserId }),
+    },
+  );
+
+  const resData = await response.json();
+  if (!response.ok) throw new Error(resData.error || "Failed to open chat");
+
+  return resData.chatRoomId;
 }
