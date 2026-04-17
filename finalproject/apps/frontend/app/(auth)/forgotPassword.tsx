@@ -39,8 +39,8 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-     
-     const actionCodeSettings = {
+
+      const actionCodeSettings = {
         url: 'http://localhost:8081/login',
         handleCodeInApp: true,
         iOS: {
@@ -55,7 +55,7 @@ export default function ForgotPassword() {
 
       // Sent email with custom settings to open the app and handle the reset in-app
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
-      
+
       Toast.show({
         type: 'success',
         text1: 'Email Sent! 📧',
@@ -63,17 +63,17 @@ export default function ForgotPassword() {
         position: 'top',
         visibilityTime: 3000,
       });
-      
+
       // Redirect to login after a short delay
       setTimeout(() => {
         router.push('/login');
       }, 2000);
-      
+
     } catch (error: any) {
       console.error('Error sending reset email:', error);
-      
+
       let errorMessage = 'Failed to send reset link. Please try again.';
-      
+
       // Manage specific Firebase Auth errors for better user feedback
       switch (error.code) {
         case 'auth/user-not-found':
@@ -89,7 +89,7 @@ export default function ForgotPassword() {
           errorMessage = 'Network error. Please check your connection.';
           break;
       }
-      
+
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -97,7 +97,7 @@ export default function ForgotPassword() {
         position: 'top',
         visibilityTime: 3000,
       });
-      
+
     } finally {
       setIsLoading(false);
     }
@@ -107,8 +107,8 @@ export default function ForgotPassword() {
     <ScrollView className="flex-1 bg-purple-700">
       <View className="flex-1 items-center justify-center px-6 py-10">
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10"
           >
@@ -124,16 +124,16 @@ export default function ForgotPassword() {
           </Text>
 
           <View className="items-center justify-center mt-6 mb-2">
-            <Image 
-              source={require('../../assets/images/email.svg')} 
+            <Image
+              source={require('../../assets/images/email.svg')}
               className="w-32 h-32"
               resizeMode="contain"
             />
           </View>
-          
-          {/* Formulario */}
+
+          {/* Form */}
           <View className="w-full mt-8 gap-4">
-            {/* Campo de Email */}
+            {/* Email field */}
             <View className="gap-1">
               <Text className="text-gray-700 text-sm ml-1">Email Address</Text>
               <View className="relative">

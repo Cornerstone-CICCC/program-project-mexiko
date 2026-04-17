@@ -13,6 +13,7 @@ export interface IChatRoom extends Document {
   };
   expiresAt: Date;
   lastMessage?: string;
+  deletedAt: Map<string, Date>;
 }
 
 const ChatRoomSchema = new Schema<IChatRoom>(
@@ -49,7 +50,13 @@ const ChatRoomSchema = new Schema<IChatRoom>(
       required: true,
     },
     lastMessage: { type: String, default: "" },
+    deletedAt: {
+      type: Map,
+      of: Date,
+      default: new Map(),
+    },
   },
+
   {
     timestamps: true,
   },

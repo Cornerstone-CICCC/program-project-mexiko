@@ -56,17 +56,12 @@ export const getMatchingList = async (firebaseUid: string) => {
   const now = new Date();
 
   const activeMatches = matchFeed.matchedUsers
-    .filter((entry) => {
-      if (!entry?.expiresAt) return false;
-
-      const expiresAt = new Date(entry.expiresAt);
-      return !Number.isNaN(expiresAt.getTime()) && expiresAt > now;
-    })
+    .filter((entry) => entry.expiresAt > now && entry.isOpened === false)
     .map((entry) => {
       const targetUser = entry.targetId as unknown as PopulatedTargetUser;
 
       return {
-        matchId: matchFeed._id?.toString?.() ?? "",
+        matchId: matchFeed._id.toString(),
         targetUserId: targetUser?._id?.toString?.() ?? "",
         synergyScore: entry.synergyScore,
         isOpened: entry.isOpened,
@@ -81,7 +76,8 @@ export const getMatchingList = async (firebaseUid: string) => {
         },
       };
     })
-    .sort((a, b) => b.synergyScore - a.synergyScore);
+    .sort((a, b) => b.synergyScore - a.synergyScore)
+    .slice(0, 5);
 
   return activeMatches;
 };
@@ -137,7 +133,7 @@ export const createMatchRequest = async (
         matchedUsers: {
           targetId: new mongoose.Types.ObjectId(targetUserId),
           synergyScore,
-          isOpened: false,
+          isOpened: true,
           recommendedAt: now,
           expiresAt,
         },
@@ -148,6 +144,8 @@ export const createMatchRequest = async (
       new: true,
     },
   );
+
+  console.log("updatedFeed", updatedFeed);
 
   return updatedFeed;
 };
@@ -187,7 +185,7 @@ export const processMatchInteraction = async (
     throw new Error("Match recommendation expired.");
   }
 
-  await Match.updateOne(
+  const result = await Match.updateOne(
     {
       _id: matchFeed._id,
       userId: currentUser._id,
@@ -200,9 +198,7 @@ export const processMatchInteraction = async (
     },
   );
 
-  const currentUserParticipantId = currentUser._id.toString();
-  const targetParticipantId = targetUserId;
-  const matchFeedId = matchFeed._id.toString();
+  console.log("isOpen  result", result);
 
   let room = await ChatRoom.findOne({
     participants: {
@@ -212,14 +208,19 @@ export const processMatchInteraction = async (
 
   if (!room) {
     room = await ChatRoom.create({
-      participants: [currentUserParticipantId, targetParticipantId],
-      matchId: matchFeedId,
+      participants: [
+        currentUser._id,
+        new mongoose.Types.ObjectId(targetUserId),
+      ],
+      matchId: matchFeed._id,
       expiresAt: new Date(Date.now() + CHATROOM_TTL_MS),
       status: "active",
     });
   }
+  console.log("room._id:", room._id);
+  console.log("room.roomId:", room.roomId);
 
-  return room._id;
+  return room.roomId;
 };
 
 export const generateDailyMatches = async () => {
@@ -230,9 +231,19 @@ export const generateDailyMatches = async () => {
 
   for (const user of allUsers) {
     const existingFeed = await Match.findOne({ userId: user._id });
+    if (existingFeed && existingFeed.matchedUsers.length > 0) {
+      continue;
+    }
 
     const currentEntries = existingFeed?.matchedUsers ?? [];
-    const now = new Date();
+    // const activeTargetIds = currentEntries
+    //   .filter((entry) => entry.expiresAt.getTime() > Date.now())
+    //   .map((entry) => entry.targetId);
+    const activeTargetIds = currentEntries
+      .filter(
+        (entry) => entry.expiresAt && entry.expiresAt.getTime() > Date.now(),
+      )
+      .map((entry) => entry.targetId);
 
     // 🔧 FIX PRINCIPAL
     const activeEntries = currentEntries.filter((entry) => {
@@ -281,13 +292,21 @@ export const generateDailyMatches = async () => {
       recommendedAt: now,
       expiresAt,
     }));
-
+    console.log("newMatches", newMatches);
     await Match.findOneAndUpdate(
       { userId: user._id },
       {
         $set: {
-          matchedUsers: [...activeEntries, ...newMatches],
+          matchedUsers: [
+            ...currentEntries.filter(
+              (entry) => entry.expiresAt > now && entry.isOpened === false,
+            ),
+            ...newMatches,
+          ],
         },
+        // $set: {
+        //   matchedUsers: newMatches,
+        // },
       },
       {
         upsert: true,

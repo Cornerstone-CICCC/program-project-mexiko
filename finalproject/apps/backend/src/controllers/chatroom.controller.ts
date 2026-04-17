@@ -23,6 +23,8 @@ export const getRoom = async (req: Request, res: Response) => {
     const roomId = String(req.params.roomId || req.params.id);
     const userId = req.session.userId;
     const page = parseInt(req.query.page as string) || 1;
+    console.log("roomId", roomId);
+    console.log("userId", userId);
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
     if (!roomId) return res.status(400).json({ error: "Room ID is required" });
@@ -67,23 +69,31 @@ export const postMessage = async (req: Request, res: Response) => {
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const filesMap = req.files as {
+      [fieldname: string]: Express.Multer.File[];
+    };
+
+    //const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     let { content, messageType } = req.body || {};
 
-    if (messageType === "image" && files?.files) {
-      content = files.files.map((f) => f.filename).join(",");
-    } else if (files?.file?.[0]) {
-      const uploadedFile = files.file[0];
+    if (filesMap?.files && filesMap.files.length > 0) {
+      content = filesMap.files.map((f) => f.filename).join(",");
+      if (!messageType) messageType = "image";
+    } else if (filesMap?.file?.[0]) {
+      const uploadedFile = filesMap.file[0];
       content = uploadedFile.filename;
+      console.log("uploadedFile.filename", uploadedFile.filename);
 
-      if (!messageType || messageType === "text") {
-        if (uploadedFile.mimetype.includes("audio")) messageType = "voice";
-        else if (uploadedFile.mimetype.includes("video")) messageType = "video";
-        else messageType = "image";
+      if (uploadedFile.mimetype.includes("audio")) {
+        messageType = "voice";
+      } else if (uploadedFile.mimetype.includes("video")) {
+        messageType = "video";
+      } else if (uploadedFile.mimetype.includes("image")) {
+        messageType = "image";
       }
     }
 
-    if (!content && (!files || Object.keys(files).length === 0)) {
+    if (!content && !req.body.content) {
       return res
         .status(400)
         .json({ error: "Message content or file is required" });
@@ -146,5 +156,60 @@ export const removeRoom = async (req: Request, res: Response) => {
         ? e.message
         : "You do not have permission to delete this room or it was not found.";
     res.status(403).json({ error: message });
+  }
+};
+
+export const clearChat = async (req: Request, res: Response) => {
+  console.log("clear chat");
+  console.log("params: ", req.params);
+
+  try {
+    const roomId = req.params.roomId as string;
+    const userId = req.session.userId as string;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!roomId) return res.status(400).json({ error: "Room ID is required" });
+
+    await chatService.clearChatHistory(roomId, userId);
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(userId).emit("chat_cleared", { roomId });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Chat history cleared for you successfully." });
+  } catch (e: any) {
+    console.error("❌ clearChat Error:", e.message);
+    res.status(500).json({ error: "Failed to clear chat history" });
+  }
+};
+
+export const blockUser = async (req: Request, res: Response) => {
+  const userId = req.session.userId as string;
+  const roomId = req.params.roomId as string;
+
+  if (!userId || !roomId) {
+    return res.status(400).json({ error: "Missing required information" });
+  }
+
+  try {
+    const result = await chatService.blockUser(roomId, userId);
+
+    if (!result) {
+      return res
+        .status(404)
+        .json({ error: "Chat room not found or unauthorized" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User blocked successfully",
+      data: result,
+    });
+  } catch (e: any) {
+    console.error("❌ blockUser Error:", e.message);
+    res.status(500).json({ error: "Failed to block user" });
   }
 };

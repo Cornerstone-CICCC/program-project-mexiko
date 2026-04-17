@@ -5,6 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import DatePicker from "react-native-ui-datepicker";
+import dayjs from "dayjs";
+import { Modal, Pressable } from "react-native";
+
+
 
 interface Step2Data {
   gender: 'Male' | 'Female' | 'Other' | '';
@@ -26,7 +31,7 @@ export default function SignUpStep2() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const step1Data = params.signupData ? JSON.parse(params.signupData as string) : null;
-  
+
   const [formData, setFormData] = useState<Step2Data>({
     gender: '',
     birthDate: '',
@@ -35,11 +40,13 @@ export default function SignUpStep2() {
     profileImage: null,
     subImages: [],
   });
-  
+
   const [selectedInterest, setSelectedInterest] = useState('');
   const [customInterest, setCustomInterest] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+
 
   const handleAddInterest = () => {
     if (selectedInterest && !formData.interests.includes(selectedInterest)) {
@@ -116,7 +123,7 @@ export default function SignUpStep2() {
       subImagesCount: formData.subImages.length
     });
     console.log('2. Step1 Data:', step1Data);
-    
+
     // Validations with detailed logging
     if (!formData.gender) {
       console.log('❌ Validation failed: Gender not selected');
@@ -144,22 +151,22 @@ export default function SignUpStep2() {
     // Validate minimum age (18 years)
     const [day, month, year] = formData.birthDate.split('/');
     console.log(`3. Parsed date - Day: ${day}, Month: ${month}, Year: ${year}`);
-    
+
     const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     const dayDiff = today.getDate() - birthDate.getDate();
-    
+
     console.log(`4. Age calculation - BirthDate: ${birthDate}, Today: ${today}`);
     console.log(`5. Calculated age: ${age}, MonthDiff: ${monthDiff}, DayDiff: ${dayDiff}`);
-    
+
     let finalAge = age;
     if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
       finalAge = age - 1;
       console.log(`6. Adjusting age (birthday not yet this year): ${finalAge}`);
     }
-    
+
     if (finalAge < 18) {
       console.log(`❌ Validation failed: User is ${finalAge} years old (min 18 required)`);
       Alert.alert('Error', 'You must be at least 18 years old');
@@ -191,23 +198,23 @@ export default function SignUpStep2() {
 
     // Preparing data for navigation
     console.log('========== PREPARING NAVIGATION ==========');
-    
+
     let step1DataString: string, step2DataString: string;
     try {
       step1DataString = JSON.stringify(step1Data);
       step2DataString = JSON.stringify(formData);
-      console.log('7. Data stringified successfully');
-      console.log(`8. Step1 data size: ${step1DataString.length} characters`);
-      console.log(`9. Step2 data size: ${step2DataString.length} characters`);
-      
+      console.log('Data stringified successfully');
+      console.log(`Step1 data size: ${step1DataString.length} characters`);
+      console.log(`Step2 data size: ${step2DataString.length} characters`);
+
       // Verify total size of data being passed
       const totalSize = step1DataString.length + step2DataString.length;
       const maxUrlSize = 8000; // The parameters are passed in the URL, so we need to ensure we don't exceed typical URL length limits
-      
+
       if (totalSize > maxUrlSize) {
         console.warn(`⚠️ Data size (${totalSize}) exceeds recommended limit (${maxUrlSize})`);
         console.warn('This may cause navigation issues');
-        
+
         // Show alert to user about potential issues with large data
         Alert.alert(
           'Warning',
@@ -219,9 +226,9 @@ export default function SignUpStep2() {
         );
         return;
       }
-      
+
       performNavigation(step1DataString, step2DataString);
-      
+
     } catch (error) {
       console.error('❌ Error stringifying data:', error);
       Alert.alert('Error', 'Failed to process data. Please try again.');
@@ -238,7 +245,7 @@ export default function SignUpStep2() {
       step1DataPreview: step1DataString.substring(0, 100),
       step2DataPreview: step2DataString.substring(0, 100)
     });
-    
+
     try {
       router.push({
         pathname: '/signupStep3',
@@ -252,7 +259,7 @@ export default function SignUpStep2() {
       console.error('❌ Navigation error:', error);
       Alert.alert('Navigation Error', 'Could not navigate to next step. Check console for details.');
     }
-    
+
     console.log('========== VALIDATION END ==========');
   };
   const handleBack = () => {
@@ -260,7 +267,7 @@ export default function SignUpStep2() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       className="flex-1 bg-purple-700"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -272,14 +279,14 @@ export default function SignUpStep2() {
               <Text className="text-white text-xs font-medium">STEP 2 OF 3</Text>
               <Text className="text-white/70 text-xs">66%</Text>
             </View>
-            
+
             <View className="h-1.5 bg-white/30 rounded-full overflow-hidden">
-              <View 
+              <View
                 className="h-full bg-white rounded-full"
                 style={{ width: '66%' }}
               />
             </View>
-            
+
             <View className="flex-row justify-between mt-3">
               <View className="items-center">
                 <View className="w-8 h-8 rounded-full bg-white/30 items-center justify-center">
@@ -303,7 +310,7 @@ export default function SignUpStep2() {
           </View>
         </View>
 
-        <ScrollView 
+        <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -311,7 +318,7 @@ export default function SignUpStep2() {
           <View className="items-center justify-center px-6 py-4">
             <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleBack}
                 className="absolute left-4 top-4 z-10"
               >
@@ -331,13 +338,13 @@ export default function SignUpStep2() {
                 {/* Profile Image */}
                 <View className="gap-2">
                   <Text className="text-gray-700 text-sm ml-1">Profile Photo</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={pickProfileImage}
                     className="items-center justify-center"
                   >
                     {formData.profileImage ? (
                       <View className="relative">
-                        <Image 
+                        <Image
                           source={{ uri: formData.profileImage }}
                           className="w-24 h-24 rounded-full"
                         />
@@ -362,15 +369,13 @@ export default function SignUpStep2() {
                       <TouchableOpacity
                         key={option}
                         onPress={() => setFormData({ ...formData, gender: option })}
-                        className={`flex-1 py-3 rounded-xl border-2 ${
-                          formData.gender === option
-                            ? 'border-purple-600 bg-purple-50'
-                            : 'border-gray-200 bg-gray-50'
-                        }`}
+                        className={`flex-1 py-3 rounded-xl border-2 ${formData.gender === option
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 bg-gray-50'
+                          }`}
                       >
-                        <Text className={`text-center font-medium ${
-                          formData.gender === option ? 'text-purple-600' : 'text-gray-600'
-                        }`}>
+                        <Text className={`text-center font-medium ${formData.gender === option ? 'text-purple-600' : 'text-gray-600'
+                          }`}>
                           {option}
                         </Text>
                       </TouchableOpacity>
@@ -381,22 +386,53 @@ export default function SignUpStep2() {
                 {/* Birth Date */}
                 <View className="gap-1">
                   <Text className="text-gray-700 text-sm ml-1">Birth Date *</Text>
-                  <View className="relative">
+
+                  <Pressable
+                    onPress={() => setShowPicker(true)}
+                    className="relative"
+                  >
                     <View className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
                       <Feather name="calendar" size={20} color="#9CA3AF" />
                     </View>
+
                     <TextInput
                       value={formData.birthDate}
-                      onChangeText={(text) => setFormData({ ...formData, birthDate: text })}
+                      editable={false}
                       placeholder="DD/MM/YYYY"
                       placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      maxLength={10}
                       className="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-100 text-gray-900"
                     />
-                  </View>
-                  <Text className="text-gray-400 text-xs ml-1">You must be at least 18 years old</Text>
+                  </Pressable>
+
+                  <Text className="text-gray-400 text-xs ml-1">
+                    You must be at least 18 years old
+                  </Text>
+
+                  {/* Modal Calendar */}
+                  <Modal visible={showPicker} transparent animationType="fade">
+                    <View className="flex-1 bg-black/40 justify-center items-center px-4">
+                      <View className="bg-white rounded-2xl p-4 w-full max-w-sm">
+
+                        <DatePicker
+                          mode="single"
+                          date={dayjs("2000-01-01")}
+                          onChange={({ date }) => {
+                            if (!date) return;
+
+                            const formatted = dayjs(date).format("DD/MM/YYYY");
+                            setFormData({ ...formData, birthDate: formatted });
+
+                            //Close modal automatically
+                            setShowPicker(false);
+                          }}
+                        />
+
+                      </View>
+                    </View>
+                  </Modal>
+
                 </View>
+
 
                 {/* Bio */}
                 <View className="gap-1">
@@ -425,7 +461,7 @@ export default function SignUpStep2() {
                 {/* Interests */}
                 <View className="gap-2">
                   <Text className="text-gray-700 text-sm ml-1">Interests *</Text>
-                  
+
                   {/* Selected Interests Tags */}
                   {formData.interests.length > 0 && (
                     <View className="flex-row flex-wrap gap-2 mb-3">
@@ -485,8 +521,8 @@ export default function SignUpStep2() {
                   </View>
 
                   {/* Quick Interest Suggestions */}
-                  <ScrollView 
-                    horizontal 
+                  <ScrollView
+                    horizontal
                     showsHorizontalScrollIndicator={false}
                     className="mt-2"
                   >
@@ -515,12 +551,12 @@ export default function SignUpStep2() {
                 <View className="gap-2">
                   <Text className="text-gray-700 text-sm ml-1">Additional Photos (Optional)</Text>
                   <Text className="text-gray-400 text-xs ml-1 mb-2">Add up to 5 photos to your profile</Text>
-                  
+
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View className="flex-row gap-3">
                       {formData.subImages.map((image, index) => (
                         <View key={index} className="relative">
-                          <Image 
+                          <Image
                             source={{ uri: image }}
                             className="w-20 h-20 rounded-xl"
                           />
@@ -547,20 +583,20 @@ export default function SignUpStep2() {
 
                 {/* Navigation Buttons */}
                 <View className="flex-row gap-3 mt-6">
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleBack}
                     className="flex-1 py-3 rounded-xl bg-gray-200"
                   >
                     <Text className="text-gray-700 font-semibold text-center">Back</Text>
                   </TouchableOpacity>
-                  
+
                   <LinearGradient
                     colors={['#6A11CB', '#2575FC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     className="flex-1 rounded-xl shadow-md"
                   >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={validateAndNext}
                       disabled={isLoading}

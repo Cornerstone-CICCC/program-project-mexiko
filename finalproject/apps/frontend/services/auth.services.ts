@@ -1,4 +1,3 @@
-// frontend/services/auth.services.ts
 import { API_ENDPOINTS } from "../config/api";
 import API_BASE_URL from "../config/api";
 import { auth } from "../config/firebase";
@@ -17,7 +16,7 @@ interface SignUpData {
   lastName: string;
   email: string;
   password: string;
-  
+
   // Information for profile
   gender: 'Male' | 'Female' | 'Other';
   birthDate: string;
@@ -25,7 +24,7 @@ interface SignUpData {
   interests: string[];
   profileImage?: string | null;
   subImages?: string[];
-  
+
   // Information for preferences
   location: {
     type: string;
@@ -97,11 +96,11 @@ class AuthService {
         );
         console.log("✅ New user created in Firebase:", userCredential.user.uid);
         isNewUser = true;
-        
+
         // Send email verification
         await sendEmailVerification(userCredential.user);
         console.log("📧 Verification email sent to:", userData.email);
-        
+
       } catch (firebaseError: any) {
         // If email already exists, try to log in instead
         if (firebaseError.code === "auth/email-already-in-use") {
@@ -122,21 +121,21 @@ class AuthService {
       const idToken = await userCredential.user.getIdToken();
       console.log("🔑 Got ID token from Firebase");
 
-      // Preparar todos los datos del usuario para el backend
+      // Prepare information for backend
       const userInfoForBackend = {
         fullName: {
           first: userData.name,
           last: userData.lastName || "",
         },
         email: userData.email,
-        // Datos de perfil (página 2)
+        // Profile information
         gender: userData.gender,
         birthDate: userData.birthDate,
         bio: userData.bio,
         interests: userData.interests || [],
         profileImage: userData.profileImage || null,
         subImages: userData.subImages || [],
-        // Datos de preferencias (página 3)
+        // Preferences information
         location: {
           type: userData.location.type || "Point",
           coordinates: userData.location.coordinates || [0, 0],
@@ -151,7 +150,7 @@ class AuthService {
       };
 
       console.log("📤 Sending complete user data to backend...");
-      
+
       // Send token and complete user info to backend
       const response = await fetch(API_ENDPOINTS.SIGNUP, {
         method: "POST",
@@ -169,7 +168,7 @@ class AuthService {
       console.log("📥 Response from backend:", data);
 
       if (!response.ok) {
-        // Si el backend falla, eliminar el usuario de Firebase para mantener consistencia
+        // If backend fails, delete user from Firebase to maintain consistency
         if (isNewUser && userCredential?.user) {
           try {
             await deleteUser(userCredential.user);
@@ -185,11 +184,11 @@ class AuthService {
         ...data,
         isNewUser: data.isNewUser !== undefined ? data.isNewUser : isNewUser,
       };
-      
+
     } catch (error: any) {
       console.error("❌ Error en signUp:", error);
 
-      // Manejo específico de errores de Firebase
+      // Bugs management for Firebase
       if (error.code === "auth/weak-password") {
         throw new Error("Password must be at least 6 characters long");
       } else if (error.code === "auth/invalid-email") {
@@ -253,7 +252,7 @@ class AuthService {
     } catch (error: any) {
       console.error("Error en login:", error, error.code, error.message);
 
-      // Manejar errores específicos de Firebase
+      // Bugs management for Firebase
       if (error.code === "auth/user-not-found") {
         throw new Error("No account found with this email");
       } else if (error.code === "auth/wrong-password") {

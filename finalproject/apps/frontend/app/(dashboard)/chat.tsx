@@ -40,6 +40,10 @@ const chat = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRoom1, setShowRoom1] = useState(true);
+  const [targetInfo, setTargetInfo] = useState<{
+    mbti: string;
+    score: number;
+  } | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState(
     "qxLtr5RqApbDDBvr5OTifLA70P33",
@@ -69,7 +73,7 @@ const chat = () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-
+      console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -258,16 +262,27 @@ const chat = () => {
             <ActivityIndicator size="small" color="#4F46E5" />
           ) : (
             rooms.map((room) => {
-              const otherParticipant = room.participants.find(
-                (p) => p.firebaseUid !== currentUserId,
-              );
+              if (!room.participants || !Array.isArray(room.participants))
+                return null;
 
               const me = room.participants.find(
                 (p) => p.firebaseUid === currentUserId,
               );
 
-              const targetMbti = otherParticipant?.mbtiType || "ESTJ";
-              const myMbti = me?.mbtiType || "ENFP";
+              const otherParticipant = room.participants.find(
+                (p) =>
+                  p.firebaseUid &&
+                  String(p.firebaseUid) !== String(currentUserId),
+              );
+
+              const targetMbti =
+                otherParticipant?.mbtiType ||
+                (otherParticipant as any)?.mbti ||
+                "---";
+
+              const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
+
+              console.log("console.log(room.participants)", room.participants);
 
               const synergyScore = calculateSynergy(myMbti, targetMbti);
 
@@ -275,7 +290,7 @@ const chat = () => {
                 <Pressable
                   key={room._id}
                   onPress={() => router.push(`/(chat)/room/${room.roomId}`)}
-                  onLongPress={() => handleLeaveChat(room._id)}
+                  onLongPress={() => handleLeaveChat(room.roomId)}
                   className="flex-row items-center mb-6"
                   style={styles.cardContainer}
                 >
@@ -287,8 +302,15 @@ const chat = () => {
                       />
                     </View>
                     <View style={styles.timeBadge}>
-                      <Text className="text-white text-[8px] mr-1">🕒</Text>
-                      <Text className="text-white text-[10px] font-bold">
+                      <Text
+                        style={{
+                          color: "white",
+                          fontSize: 10,
+                          fontWeight: "800",
+                          includeFontPadding: false,
+                          textAlignVertical: "center",
+                        }}
+                      >
                         {getRemainingTime(room.updatedAt)}
                       </Text>
                     </View>
@@ -322,7 +344,13 @@ const chat = () => {
                       className={`${!room.lastMessageIsRead && room.lastMessageSenderId !== currentUserId ? "font-bold text-slate-900" : "text-slate-600"} text-sm`}
                       numberOfLines={1}
                     >
-                      {room.lastMessage || "Start a new conversation!"}
+                      {/*room.lastMessage || "Start a new conversation!"*/}
+                      {typeof room.lastMessage === "string"
+                        ? room.lastMessage
+                        : typeof room.lastMessage === "object" &&
+                            room.lastMessage !== null
+                          ? "[Can't check content]"
+                          : "Start a new conversation!"}
                     </Text>
                   </View>
                 </Pressable>
@@ -336,29 +364,41 @@ const chat = () => {
 };
 
 export default chat;
-
 const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: 24,
     backgroundColor: "white",
     padding: 16,
+    marginBottom: 16,
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  profileImg: { width: "100%", height: "100%", borderRadius: 100 },
+  profileImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 100,
+  },
   timeBadge: {
     position: "absolute",
-    bottom: -4,
-    right: -4,
-    backgroundColor: "#4F46E5",
-    borderRadius: 12,
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#6366F1",
+    minWidth: 32,
+    height: 20,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    justifyContent: "center",
+    paddingHorizontal: 5,
     borderWidth: 2,
     borderColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
 });

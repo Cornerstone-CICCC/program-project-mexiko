@@ -1,4 +1,3 @@
-// backend/src/config/firebase-admin.ts
 import * as admin from 'firebase-admin';
 import * as dotenv from 'dotenv';
 
@@ -10,9 +9,9 @@ console.log('🟡 Inicialized Firebase Admin ...');
 if (!admin.apps.length) {
   try {
     // Verify that all required environment variables are present
-    if (!process.env.FIREBASE_PROJECT_ID || 
-        !process.env.FIREBASE_CLIENT_EMAIL || 
-        !process.env.FIREBASE_PRIVATE_KEY) {
+    if (!process.env.FIREBASE_PROJECT_ID ||
+      !process.env.FIREBASE_CLIENT_EMAIL ||
+      !process.env.FIREBASE_PRIVATE_KEY) {
       throw new Error('Requiered firabase enviroment variables are missing.');
     }
 

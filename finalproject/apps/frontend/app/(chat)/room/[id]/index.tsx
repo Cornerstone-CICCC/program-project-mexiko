@@ -16,7 +16,7 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
+import { Audio, Video } from "expo-av";
 import axios from "axios";
 import { getSocket } from "../../../utils/socket";
 import * as FileSystem from "expo-file-system/legacy";
@@ -30,7 +30,8 @@ axios.defaults.withCredentials = true;
 interface Message {
   id: string;
   text: string;
-  image?: string | null;
+  images?: string[] | null;
+  video?: string | null;
   audio?: string | null;
   time: string;
   isMe: boolean;
@@ -53,6 +54,8 @@ const ChatRoom = () => {
     null,
   );
 
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+
   const isFetchingRef = React.useRef(false);
   const [targetInfo, setTargetInfo] = useState<{
     mbti: string;
@@ -73,6 +76,8 @@ const ChatRoom = () => {
         `/chatroom/${roomId}?page=${currentPage}`,
       );
 
+      console.log("Room API Response:", response.data);
+
       const {
         room,
         messages: dbMessages = [],
@@ -81,7 +86,12 @@ const ChatRoom = () => {
 
       setMyId(currentUserId);
 
-      if (room && room.participants) {
+      if (
+        room &&
+        room.participants &&
+        Array.isArray(room.participants) &&
+        room.participants.length > 0
+      ) {
         const me = room.participants.find(
           (p: any) => p.firebaseUid === currentUserId,
         );
@@ -89,20 +99,22 @@ const ChatRoom = () => {
           (p: any) => p.firebaseUid !== currentUserId,
         );
 
-        const myMbti = me.mbtiType;
-        const otherMbti = other.mbtiType;
+        const myMbti = me?.mbtiType || me?.mbti || "ENFP";
+        const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
+
+        console.log("MBTI Check:", { myMbti, otherMbti });
+
         const score = calculateSynergy(myMbti, otherMbti);
 
         if (other) {
-          const myMbti = me?.mbtiType || "ENFP";
-          const otherMbti = other.mbtiType;
-          const score = calculateSynergy(myMbti, otherMbti);
-
           setTargetInfo({
             mbti: otherMbti,
             score: score,
           });
         }
+      } else {
+        console.log("⚠️ No participants data found in room object");
+        setTargetInfo({ mbti: "---", score: 0 });
       }
 
       if (dbMessages.length < 50) setHasMore(false);
@@ -110,8 +122,15 @@ const ChatRoom = () => {
       const formatted = dbMessages.map((msg: any) => ({
         id: msg._id,
         text: msg.content,
-        image:
+        images:
           msg.messageType === "image"
+            ? (Array.isArray(msg.content)
+                ? msg.content
+                : msg.content.split(",")
+              ).map((img: string) => `${SERVER_URL}/uploads/${img}`)
+            : [],
+        video:
+          msg.messageType === "video"
             ? `${SERVER_URL}/uploads/${msg.content}`
             : null,
         audio:
@@ -126,7 +145,7 @@ const ChatRoom = () => {
         isMe: msg.senderId === currentUserId,
         isRead: msg.isRead,
       }));
-
+      console.log("formatted", formatted);
       setMessages((prev) => {
         const combined = [...formatted, ...prev];
         const uniqueMessages = Array.from(
@@ -148,6 +167,62 @@ const ChatRoom = () => {
       }, 2000);
     }
   };
+  //Modal
+  const renderImageModal = () => (
+    <Modal
+      visible={!!selectedFullImage}
+      transparent={true}
+      onRequestClose={() => setSelectedFullImage(null)}
+    >
+      <TouchableOpacity
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.9)",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+        onPress={() => setSelectedFullImage(null)}
+      >
+        {selectedFullImage && (
+          <Image
+            source={{ uri: selectedFullImage }}
+            style={{ width: "100%", height: "80%" }}
+            resizeMode="contain"
+          />
+        )}
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  const renderVideoModal = () => (
+    <Modal
+      visible={!!selectedVideo}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setSelectedVideo(null)}
+    >
+      <View
+        style={{ flex: 1, backgroundColor: "black", justifyContent: "center" }}
+      >
+        {selectedVideo && (
+          <Video
+            source={{ uri: selectedVideo }}
+            style={{ width: "100%", height: "100%" }}
+            useNativeControls
+            resizeMode="contain"
+            shouldPlay
+          />
+        )}
+
+        <TouchableOpacity
+          style={{ position: "absolute", top: 50, right: 20, zIndex: 10 }}
+          onPress={() => setSelectedVideo(null)}
+        >
+          <Entypo name="cross" size={30} color="white" />
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
 
   useEffect(() => {
     if (roomId) fetchMessages();
@@ -182,6 +257,10 @@ const ChatRoom = () => {
         text: newMessage.content,
         image:
           newMessage.messageType === "image"
+            ? `${SERVER_URL}/uploads/${newMessage.content}`
+            : null,
+        video:
+          newMessage.messageType === "video"
             ? `${SERVER_URL}/uploads/${newMessage.content}`
             : null,
         audio:
@@ -243,8 +322,9 @@ const ChatRoom = () => {
   const editImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
+
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ["images", "videos"],
       allowsMultipleSelection: true,
       selectionLimit: 5,
       quality: 0.7,
@@ -252,19 +332,23 @@ const ChatRoom = () => {
 
     if (!result.canceled && result.assets) {
       const formData = new FormData();
-      result.assets.forEach((asset, index) => {
-        formData.append("files", {
+      const hasVideo = result.assets.some((asset) => asset.type === "video");
+
+      result.assets.forEach((asset) => {
+        const isVideo = asset.type === "video";
+
+        formData.append(isVideo ? "file" : "files", {
           uri:
             Platform.OS === "ios"
               ? asset.uri.replace("file://", "")
               : asset.uri,
-          type: "image/jpeg",
-          name: `photo-${Date.now()}.jpg`,
+          type: isVideo ? "video/mp4" : "image/jpeg",
+          name: isVideo ? `video-${Date.now()}.mp4` : `photo-${Date.now()}.jpg`,
         } as any);
       });
-      formData.append("messageType", "image");
-      formData.append("roomId", roomId as string);
 
+      formData.append("messageType", hasVideo ? "video" : "image");
+      formData.append("roomId", roomId as string);
       try {
         const response = await axios.post(
           `/chatroom/${roomId}/messages`,
@@ -287,10 +371,17 @@ const ChatRoom = () => {
   };
 
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
+
   const startRecording = async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
+
       if (status !== "granted") return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,
       );
@@ -333,6 +424,71 @@ const ChatRoom = () => {
     }
   };
 
+  const AudioPlayer = ({ uri, isMe }: { uri: string; isMe: boolean }) => {
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    useEffect(() => {
+      return sound
+        ? () => {
+            sound.unloadAsync();
+          }
+        : undefined;
+    }, [sound]);
+
+    async function playSound() {
+      try {
+        if (sound) {
+          const status = await sound.getStatusAsync();
+          if (status.isLoaded) {
+            if (isPlaying) {
+              await sound.stopAsync();
+              setIsPlaying(false);
+            } else {
+              await sound.replayAsync();
+              setIsPlaying(true);
+            }
+          }
+        } else {
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri },
+            { shouldPlay: true },
+          );
+          setSound(newSound);
+          setIsPlaying(true);
+
+          newSound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded) {
+              if (status.didJustFinish) {
+                setIsPlaying(false);
+              }
+            } else if (status.error) {
+              console.error(`Playback Error: ${status.error}`);
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error playing sound:", error);
+      }
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={playSound}
+        style={{ flexDirection: "row", alignItems: "center", padding: 5 }}
+      >
+        <Entypo
+          name={isPlaying ? "controller-stop" : "controller-play"}
+          size={24}
+          color={isMe ? "white" : "#4F46E5"}
+        />
+        <Text style={{ color: isMe ? "white" : "#334155", marginLeft: 8 }}>
+          Voice Message
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -355,6 +511,11 @@ const ChatRoom = () => {
               </View>
             </View>
           </View>
+          <Link href={`/room/${roomId}/settings`} asChild>
+            <TouchableOpacity>
+              <Entypo name="dots-three-vertical" size={20} color="#1e293b" />
+            </TouchableOpacity>
+          </Link>
         </View>
       </View>
 
@@ -424,18 +585,92 @@ const ChatRoom = () => {
                       },
                     ]}
                   >
-                    {msg.image ? (
-                      <Image
-                        source={{ uri: msg.image }}
-                        style={{ width: 180, height: 180, borderRadius: 12 }}
-                      />
+                    {msg.images && msg.images.length > 0 ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 5,
+                          width: 200,
+                        }}
+                      >
+                        {msg.images.map((imgUri, i) => (
+                          <TouchableOpacity
+                            key={i}
+                            onPress={() => setSelectedFullImage(imgUri)}
+                          >
+                            <Image
+                              source={{ uri: imgUri }}
+                              style={{
+                                width: msg.images!.length > 1 ? 95 : 180,
+                                height: msg.images!.length > 1 ? 95 : 180,
+                                borderRadius: 8,
+                              }}
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ) : msg.video ? (
+                      <TouchableOpacity
+                        onPress={() => setSelectedVideo(msg.video)}
+                      >
+                        <View pointerEvents="none">
+                          <Video
+                            source={{ uri: msg.video }}
+                            style={{
+                              width: 200,
+                              height: 150,
+                              borderRadius: 12,
+                            }}
+                            resizeMode="cover"
+                            shouldPlay={false}
+                          />
+
+                          <View
+                            style={{
+                              position: "absolute",
+                              top: "40%",
+                              left: "42%",
+                            }}
+                          >
+                            <Entypo
+                              name="controller-play"
+                              size={40}
+                              color="white"
+                              style={{ opacity: 0.8 }}
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ) : msg.audio ? (
+                      <AudioPlayer uri={msg.audio} isMe={msg.isMe} />
                     ) : (
                       <Text style={{ color: msg.isMe ? "white" : "#334155" }}>
                         {msg.text}
                       </Text>
                     )}
                   </View>
-                  <Text style={styles.timeText}>{msg.time}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      marginTop: 4,
+                    }}
+                  >
+                    {msg.isMe && !msg.isRead && (
+                      <Text
+                        style={{
+                          color: "#4F46E5",
+                          fontSize: 10,
+                          marginRight: 4,
+                        }}
+                      >
+                        1
+                      </Text>
+                    )}
+                    <Text style={styles.timeText}>{msg.time}</Text>
+                  </View>
                 </View>
               </View>
             </React.Fragment>
@@ -451,7 +686,7 @@ const ChatRoom = () => {
             value={inputText}
             onChangeText={setInputText}
             placeholder="Type a message"
-            className="flex-1 bg-gray-100 rounded-full px-4 py-2"
+            className="flex-1 bg-gray-100 rounded-full px-4 py-6"
           />
           <TouchableOpacity onPress={editImage} className="ml-2">
             <Entypo name="image" size={24} color="#94a3b8" />
@@ -475,6 +710,8 @@ const ChatRoom = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      {renderImageModal()}
+      {renderVideoModal()}
     </SafeAreaView>
   );
 };

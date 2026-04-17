@@ -13,12 +13,12 @@ export default function VerifyEmail() {
   const [isLoading, setIsLoading] = useState(false);
   const [checkingVerification, setCheckingVerification] = useState(false);
 
-  // Función para verificar si el email ya fue verificado
+  // Check email verification status
   const checkEmailVerified = async () => {
     try {
       const user = auth.currentUser;
       if (user) {
-        await user.reload(); // Recargar datos del usuario
+        await user.reload(); // Reload user data
         return user.emailVerified;
       }
       return false;
@@ -32,7 +32,7 @@ export default function VerifyEmail() {
     setCheckingVerification(true);
     try {
       const isVerified = await checkEmailVerified();
-      
+
       if (isVerified) {
         Alert.alert(
           'Success!',
@@ -75,7 +75,7 @@ export default function VerifyEmail() {
     }
   };
 
-  // Verificar automáticamente cada 5 segundos si el email fue verificado
+  // Check email verification status every 5 seconds
   useEffect(() => {
     const interval = setInterval(async () => {
       const isVerified = await checkEmailVerified();
@@ -100,10 +100,10 @@ export default function VerifyEmail() {
   return (
     <ScrollView className="flex-1 bg-purple-700">
       <View className="flex-1 items-center justify-center px-6 py-10">
-        
+
         <View className="bg-white w-full max-w-sm rounded-2xl p-6">
 
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10"
           >
@@ -111,12 +111,12 @@ export default function VerifyEmail() {
           </TouchableOpacity>
 
           <View className="items-center justify-center mt-6 mb-2">
-            <Image 
-                source={require('../../assets/images/verifyEmail.svg')} 
-                className="w-32 h-32"
-                resizeMode="contain"
+            <Image
+              source={require('../../assets/images/verifyEmail.svg')}
+              className="w-32 h-32"
+              resizeMode="contain"
             />
-           </View>
+          </View>
 
           <Text className="text-gray-900 text-2xl font-bold text-center">
             Verify Your Email
@@ -140,14 +140,14 @@ export default function VerifyEmail() {
               </View>
               <Text className="text-gray-700 text-sm">Check your email inbox</Text>
             </View>
-            
+
             <View className="flex-row items-center gap-2">
               <View className="w-5 h-5 rounded-full bg-purple-100 items-center justify-center">
                 <Text className="text-purple-600 text-xs font-bold">2</Text>
               </View>
               <Text className="text-gray-700 text-sm">Click the verification link</Text>
             </View>
-            
+
             <View className="flex-row items-center gap-2">
               <View className="w-5 h-5 rounded-full bg-purple-100 items-center justify-center">
                 <Text className="text-purple-600 text-xs font-bold">3</Text>
@@ -158,7 +158,7 @@ export default function VerifyEmail() {
 
           <Text className="text-gray-500 text-xs mt-4 text-center leading-relaxed">
             Can't find the email? Check your spam folder or{' '}
-            <Text 
+            <Text
               className="text-purple-600 font-medium underline"
               onPress={handleResendEmail}
             >
@@ -170,28 +170,27 @@ export default function VerifyEmail() {
 
             {/* Botón I've Verified My Email */}
             <LinearGradient
-                colors={['#6A11CB', '#2575FC']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                className="w-full rounded-xl shadow-md"
-                >
-                <TouchableOpacity 
-                    className="w-full py-3"
-                    activeOpacity={0.8}
-                    onPress={handleVerificationComplete}
-                    disabled={checkingVerification}
-                >
-                  <Text className="text-white font-semibold text-center">
-                    {checkingVerification ? 'Checking...' : "I've Verified My Email"}
-                  </Text>
-                </TouchableOpacity>
+              colors={['#6A11CB', '#2575FC']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="w-full rounded-xl shadow-md"
+            >
+              <TouchableOpacity
+                className="w-full py-3"
+                activeOpacity={0.8}
+                onPress={handleVerificationComplete}
+                disabled={checkingVerification}
+              >
+                <Text className="text-white font-semibold text-center">
+                  {checkingVerification ? 'Checking...' : "I've Verified My Email"}
+                </Text>
+              </TouchableOpacity>
             </LinearGradient>
 
             {/* Botón Resend Verification Email */}
-            <TouchableOpacity 
-              className={`w-full py-3 border border-purple-600 rounded-xl ${
-                isLoading ? 'opacity-50' : ''
-              }`}
+            <TouchableOpacity
+              className={`w-full py-3 border border-purple-600 rounded-xl ${isLoading ? 'opacity-50' : ''
+                }`}
               activeOpacity={0.8}
               onPress={handleResendEmail}
               disabled={isLoading}
