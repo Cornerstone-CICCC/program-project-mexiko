@@ -55,6 +55,11 @@ export default function DashboardPage() {
     return fullName || user.email || user._id || 'Unknown'
   }
 
+  const getReportedUserStatus = (user?: string | ReportUser) => {
+    if (!user || typeof user === 'string') return 'Active'
+    return user.isSuspended ? 'Suspended' : 'Active'
+  }
+
   const getSummaryValue = (
     summaryStats: DashboardStatItem[],
     matcher: (title: string) => boolean,
@@ -75,7 +80,9 @@ export default function DashboardPage() {
           getReports(),
         ])
 
-        const allReports = Array.isArray(reportsResult.reports) ? reportsResult.reports : []
+        const allReports: FullReportItem[] = Array.isArray(reportsResult.reports)
+          ? reportsResult.reports
+          : []
 
         const pendingReports = allReports.filter(
           (report) => report.status === 'Pending',
@@ -85,17 +92,18 @@ export default function DashboardPage() {
           (report) => report.status === 'Resolved',
         ).length
 
+        const suspendedUsersCount = new Set(
+          allReports
+            .map((report) => {
+              if (!report.targetId || typeof report.targetId === 'string') return null
+              return report.targetId.isSuspended ? report.targetId._id : null
+            })
+            .filter((id): id is string => Boolean(id)),
+        ).size
+
         const totalUsers = getSummaryValue(
           summary.stats,
-          (title) => title.includes('total user') || title.includes('users'),
-        )
-
-        const suspendedUsers = getSummaryValue(
-          summary.stats,
-          (title) =>
-            title.includes('suspended') ||
-            title.includes('inactive') ||
-            title.includes('banned'),
+          (title) => title.includes('total user') || title === 'users' || title.includes('users'),
         )
 
         setStats([
@@ -108,16 +116,16 @@ export default function DashboardPage() {
           },
           {
             title: 'Suspended Users',
-            value: suspendedUsers,
-            change: 'Moderation',
-            trend: 'down',
+            value: suspendedUsersCount.toString(),
+            change: 'From reports',
+            trend: suspendedUsersCount > 0 ? 'down' : 'up',
             icon: 'users',
           },
           {
             title: 'Pending Reports',
             value: pendingReports.toString(),
             change: 'Needs review',
-            trend: 'down',
+            trend: pendingReports > 0 ? 'down' : 'up',
             icon: 'reports',
           },
           {
@@ -129,7 +137,7 @@ export default function DashboardPage() {
           },
         ])
 
-        setRecentUsers(recentUsersResult)
+        setRecentUsers(Array.isArray(recentUsersResult) ? recentUsersResult : [])
         setReportManagement(allReports.slice(0, 5))
       } catch (err) {
         console.error(err)
@@ -199,36 +207,52 @@ export default function DashboardPage() {
             <thead className="bg-slate-50">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                 <th className="px-6 py-4">Reporter</th>
+                <th className="px-6 py-4">Reported User</th>
                 <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">User Status</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
             <tbody>
-              {reportManagement.map((report) => (
-                <tr key={report._id} className="border-t border-[var(--color-border)]">
-                  <td className="px-6 py-5 font-medium text-slate-800">
-                    {formatUserName(report.reporterId)}
-                  </td>
-                  <td className="px-6 py-5 text-slate-600">
-                    {report.category || 'No category'}
-                  </td>
-                  <td className="px-6 py-5">
-                    <StatusBadge variant={normalizeStatus(report.status)}>
-                      {getStatusLabel(report.status)}
-                    </StatusBadge>
-                  </td>
-                  <td className="px-6 py-5 text-slate-600">
-                    {report.createdAt
-                      ? new Date(report.createdAt).toLocaleDateString()
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
+              {reportManagement.map((report) => {
+                const reportedUserStatus = getReportedUserStatus(report.targetId)
+
+                return (
+                  <tr key={report._id} className="border-t border-[var(--color-border)]">
+                    <td className="px-6 py-5 font-medium text-slate-800">
+                      {formatUserName(report.reporterId)}
+                    </td>
+                    <td className="px-6 py-5 text-slate-600">
+                      {formatUserName(report.targetId)}
+                    </td>
+                    <td className="px-6 py-5 text-slate-600">
+                      {report.category || 'No category'}
+                    </td>
+                    <td className="px-6 py-5">
+                      <StatusBadge
+                        variant={reportedUserStatus === 'Suspended' ? 'inactive' : 'success'}
+                      >
+                        {reportedUserStatus}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-6 py-5">
+                      <StatusBadge variant={normalizeStatus(report.status)}>
+                        {getStatusLabel(report.status)}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-6 py-5 text-slate-600">
+                      {report.createdAt
+                        ? new Date(report.createdAt).toLocaleDateString()
+                        : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
 
               {!reportManagement.length && !loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
                     No reports found.
                   </td>
                 </tr>

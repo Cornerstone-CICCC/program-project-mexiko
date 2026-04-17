@@ -34,6 +34,7 @@ export interface ReportUser {
     first?: string;
     last?: string;
   };
+  isSuspended?: boolean;
 }
 
 export interface ReportItem {

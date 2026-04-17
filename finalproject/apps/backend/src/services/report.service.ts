@@ -8,7 +8,7 @@ export const getReports = async (
 ) => {
   return await Report.find(query)
     .populate("reporterId", "fullName email")
-    .populate("targetId", "fullName email")
+    .populate("targetId", "fullName email isSuspended")
     .limit(limit)
     .skip((page - 1) * limit)
     .sort({ createdAt: -1 });
@@ -37,7 +37,7 @@ export const createManyReports = async (
 export const findReportById = async (id: string) => {
   return await Report.findById(id)
     .populate("reporterId", "fullName email")
-    .populate("targetId", "fullName email");
+    .populate("targetId", "fullName email isSuspended");
 };
 
 export const updateReport = async (
@@ -50,7 +50,7 @@ export const updateReport = async (
     { new: true, runValidators: true },
   )
     .populate("reporterId", "fullName email")
-    .populate("targetId", "fullName email");
+    .populate("targetId", "fullName email isSuspended");
 };
 
 export const deleteReport = async (id: string) => {

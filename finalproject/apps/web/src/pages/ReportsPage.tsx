@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import StatusBadge from '../components/ui/StatusBadge'
-import { getReports } from '../services/reportService'
+import { getReports, updateReport } from '../services/reportService'
+import { updateUser } from '../services/userService'
 import type { ReportItem, ReportUser } from '../types/dashboard'
 
 export default function ReportsPage() {
@@ -8,6 +9,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [suspendSuccessMessage, setSuspendSuccessMessage] = useState<string | null>(null)
 
   const normalizeStatus = (status?: string) => {
     if (!status) return 'resolved'
@@ -59,7 +62,16 @@ export default function ReportsPage() {
       setError(null)
 
       const data = await getReports()
-      setReports(Array.isArray(data.reports) ? data.reports : [])
+      const nextReports = Array.isArray(data.reports) ? data.reports : []
+
+      setReports(nextReports)
+
+      setSelectedReport((prev) => {
+        if (!prev?._id) return prev
+
+        const refreshedReport = nextReports.find((report) => report._id === prev._id)
+        return refreshedReport ?? prev
+      })
     } catch (err) {
       console.error(err)
       setError('Could not load reports.')
@@ -69,8 +81,122 @@ export default function ReportsPage() {
   }
 
   useEffect(() => {
-    loadReports()
+    void loadReports()
   }, [])
+
+  useEffect(() => {
+    setSuspendSuccessMessage(null)
+  }, [selectedReport])
+
+  const selectedTargetUser: (ReportUser & { isSuspended?: boolean }) | null =
+    selectedReport &&
+    selectedReport.targetId &&
+    typeof selectedReport.targetId !== 'string'
+      ? selectedReport.targetId
+      : null
+
+  const isSelectedUserSuspended = !!selectedTargetUser?.isSuspended
+
+  const handleResolveReport = async () => {
+    if (!selectedReport?._id) return
+
+    try {
+      setActionLoading(true)
+      setError(null)
+
+      const updatedReport = (await updateReport(selectedReport._id, {
+        reportInfo: {
+          status: 'Resolved',
+        },
+      })) as ReportItem
+
+      setSelectedReport(updatedReport)
+
+      setReports((prev) =>
+        prev.map((report) =>
+          report._id === selectedReport._id ? updatedReport : report
+        )
+      )
+    } catch (err) {
+      console.error(err)
+      setError('Could not resolve report.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleSuspendUser = async () => {
+    if (!selectedReport?.targetId) return
+    if (isSelectedUserSuspended) return
+
+    const targetUserId =
+      typeof selectedReport.targetId === 'string'
+        ? selectedReport.targetId
+        : selectedReport.targetId._id
+
+    if (!targetUserId) return
+
+    try {
+      setActionLoading(true)
+      setError(null)
+      setSuspendSuccessMessage(null)
+
+      await updateUser(targetUserId, {
+        userInfo: {
+          isSuspended: true,
+        },
+      })
+
+      setSelectedReport((prev): ReportItem | null => {
+        if (!prev) return prev
+
+        const prevTarget =
+          prev.targetId && typeof prev.targetId !== 'string'
+            ? prev.targetId
+            : null
+
+        if (!prevTarget) return prev
+        if (prevTarget._id !== targetUserId) return prev
+
+        return {
+          ...prev,
+          targetId: {
+            ...prevTarget,
+            isSuspended: true,
+          } as ReportUser,
+        }
+      })
+
+      setReports((prev): ReportItem[] =>
+        prev.map((report) => {
+          const reportTarget =
+            report.targetId && typeof report.targetId !== 'string'
+              ? report.targetId
+              : null
+
+          if (!reportTarget) return report
+          if (reportTarget._id !== targetUserId) return report
+
+          return {
+            ...report,
+            targetId: {
+              ...reportTarget,
+              isSuspended: true,
+            } as ReportUser,
+          }
+        })
+      )
+
+      setSuspendSuccessMessage('User suspended successfully.')
+
+      await loadReports()
+    } catch (err) {
+      console.error(err)
+      setError('Could not suspend user.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <>
@@ -180,6 +306,12 @@ export default function ReportsPage() {
               </button>
             </div>
 
+            {suspendSuccessMessage ? (
+              <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {suspendSuccessMessage}
+              </div>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -221,6 +353,15 @@ export default function ReportsPage() {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  User Status
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {isSelectedUserSuspended ? 'Suspended' : 'Active'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Description
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
@@ -240,7 +381,27 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                onClick={handleResolveReport}
+                disabled={actionLoading || selectedReport.status === 'Resolved'}
+                className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {actionLoading ? 'Processing...' : 'Resolve'}
+              </button>
+
+              <button
+                onClick={handleSuspendUser}
+                disabled={actionLoading || isSelectedUserSuspended}
+                className="rounded-2xl bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {actionLoading
+                  ? 'Processing...'
+                  : isSelectedUserSuspended
+                    ? 'User Suspended'
+                    : 'Suspend User'}
+              </button>
+
               <button
                 onClick={() => setSelectedReport(null)}
                 className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
