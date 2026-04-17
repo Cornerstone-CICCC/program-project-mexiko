@@ -1,4 +1,14 @@
-const API_BASE_URL = "http://localhost:3500";
+import { Platform } from "react-native";
+
+// On Android, 'localhost' refers to the device itself, not the dev machine.
+// Use your machine's LAN IP for Android so the app can reach the backend.
+// For web, localhost works fine.
+const LAN_IP = "10.0.0.132";
+
+const API_BASE_URL =
+  Platform.OS === "android"
+    ? `http://${LAN_IP}:3500`
+    : "http://localhost:3500";
 
 export const API_ENDPOINTS = {
   SIGNUP: `${API_BASE_URL}/users/signup`,
