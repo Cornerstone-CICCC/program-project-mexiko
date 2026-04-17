@@ -1,40 +1,67 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, Users } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import ChartCard from '../components/dashboard/ChartCard'
 import DataTableCard from '../components/dashboard/DataTableCard'
 import StatCard from '../components/dashboard/StatCard'
 import StatusBadge from '../components/ui/StatusBadge'
+import { getReports } from '../services/reportService'
+import type { ReportItem as FullReportItem, ReportUser } from '../types/dashboard'
 import {
   getDashboardSummary,
-  getRecentReportsPreview,
   getRecentUsersPreview,
-  type DashboardMatchSuccessItem,
   type DashboardRecentUser,
-  type DashboardReportItem,
   type DashboardStatItem,
-  type DashboardUserGrowthItem,
 } from '../services/dashboardService'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStatItem[]>([])
   const [recentUsers, setRecentUsers] = useState<DashboardRecentUser[]>([])
-  const [reportManagement, setReportManagement] = useState<DashboardReportItem[]>([])
-  const [matchSuccessChartData, setMatchSuccessChartData] = useState<DashboardMatchSuccessItem[]>([])
-  const [userGrowthChartData, setUserGrowthChartData] = useState<DashboardUserGrowthItem[]>([])
+  const [reportManagement, setReportManagement] = useState<FullReportItem[]>([])
 
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+
+  const normalizeStatus = (status?: string) => {
+    if (!status) return 'resolved'
+
+    const normalized = status.toLowerCase()
+
+    if (normalized.includes('pending')) return 'pending'
+    if (normalized.includes('dismiss')) return 'reviewing'
+    if (normalized.includes('review')) return 'reviewing'
+
+    return 'resolved'
+  }
+
+  const getStatusLabel = (status?: string) => {
+    if (!status) return 'Resolved'
+
+    const normalized = status.toLowerCase()
+
+    if (normalized.includes('pending')) return 'Pending'
+    if (normalized.includes('dismiss')) return 'Dismissed'
+    if (normalized.includes('review')) return 'Reviewing'
+
+    return 'Resolved'
+  }
+
+  const formatUserName = (user?: string | ReportUser) => {
+    if (!user) return 'Unknown'
+
+    if (typeof user === 'string') return user
+
+    const first = user.fullName?.first ?? ''
+    const last = user.fullName?.last ?? ''
+    const fullName = `${first} ${last}`.trim()
+
+    return fullName || user.email || user._id || 'Unknown'
+  }
+
+  const getSummaryValue = (
+    summaryStats: DashboardStatItem[],
+    matcher: (title: string) => boolean,
+  ) => {
+    const match = summaryStats.find((item) => matcher(item.title.toLowerCase()))
+    return match?.value ?? '0'
+  }
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -42,17 +69,68 @@ export default function DashboardPage() {
         setLoading(true)
         setError(null)
 
-        const [summary, recentUsersResult, recentReportsResult] = await Promise.all([
+        const [summary, recentUsersResult, reportsResult] = await Promise.all([
           getDashboardSummary(),
           getRecentUsersPreview(),
-          getRecentReportsPreview(),
+          getReports(),
         ])
 
-        setStats(summary.stats)
-        setMatchSuccessChartData(summary.matchSuccessData)
-        setUserGrowthChartData(summary.userGrowthData)
+        const allReports = Array.isArray(reportsResult.reports) ? reportsResult.reports : []
+
+        const pendingReports = allReports.filter(
+          (report) => report.status === 'Pending',
+        ).length
+
+        const resolvedReports = allReports.filter(
+          (report) => report.status === 'Resolved',
+        ).length
+
+        const totalUsers = getSummaryValue(
+          summary.stats,
+          (title) => title.includes('total user') || title.includes('users'),
+        )
+
+        const suspendedUsers = getSummaryValue(
+          summary.stats,
+          (title) =>
+            title.includes('suspended') ||
+            title.includes('inactive') ||
+            title.includes('banned'),
+        )
+
+        setStats([
+          {
+            title: 'Total Users',
+            value: totalUsers,
+            change: 'Live data',
+            trend: 'up',
+            icon: 'users',
+          },
+          {
+            title: 'Suspended Users',
+            value: suspendedUsers,
+            change: 'Moderation',
+            trend: 'down',
+            icon: 'users',
+          },
+          {
+            title: 'Pending Reports',
+            value: pendingReports.toString(),
+            change: 'Needs review',
+            trend: 'down',
+            icon: 'reports',
+          },
+          {
+            title: 'Resolved Reports',
+            value: resolvedReports.toString(),
+            change: 'Handled cases',
+            trend: 'up',
+            icon: 'reports',
+          },
+        ])
+
         setRecentUsers(recentUsersResult)
-        setReportManagement(recentReportsResult)
+        setReportManagement(allReports.slice(0, 5))
       } catch (err) {
         console.error(err)
         setError('Could not load dashboard data.')
@@ -76,68 +154,6 @@ export default function DashboardPage() {
         {stats.map((item) => (
           <StatCard key={item.title} item={item} />
         ))}
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <ChartCard
-          title="Match Success Rate"
-          subtitle="Matches vs. Profile Reveals"
-          action={<TrendingUp className="h-5 w-5" />}
-        >
-          {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              Loading chart...
-            </div>
-          ) : !matchSuccessChartData.length ? (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              No match data available.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={matchSuccessChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
-                <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="matches" fill="#5b5ce2" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="reveals" fill="#9d8cff" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        <ChartCard
-          title="User Growth"
-          subtitle="New registrations over time"
-          action={<Users className="h-5 w-5" />}
-        >
-          {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              Loading chart...
-            </div>
-          ) : !userGrowthChartData.length ? (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
-              No user growth data available.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={userGrowthChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8ecf3" />
-                <XAxis dataKey="month" tick={{ fill: '#8a94a6', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#8a94a6', fontSize: 12 }} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#5b5ce2"
-                  strokeWidth={3}
-                  dot={{ r: 4, fill: '#5b5ce2' }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
       </section>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
@@ -183,33 +199,29 @@ export default function DashboardPage() {
             <thead className="bg-slate-50">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                 <th className="px-6 py-4">Reporter</th>
-                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Action</th>
+                <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
             <tbody>
               {reportManagement.map((report) => (
-                <tr key={report.id} className="border-t border-[var(--color-border)]">
-                  <td className="px-6 py-5 font-medium text-slate-800">{report.reporter}</td>
-                  <td className="px-6 py-5 text-slate-600">{report.type}</td>
-                  <td className="px-6 py-5">
-                    <StatusBadge
-                      variant={
-                        report.status === 'Pending'
-                          ? 'pending'
-                          : report.status === 'Reviewing'
-                            ? 'reviewing'
-                            : 'resolved'
-                      }
-                    >
-                      {report.status}
-                    </StatusBadge>
+                <tr key={report._id} className="border-t border-[var(--color-border)]">
+                  <td className="px-6 py-5 font-medium text-slate-800">
+                    {formatUserName(report.reporterId)}
+                  </td>
+                  <td className="px-6 py-5 text-slate-600">
+                    {report.category || 'No category'}
                   </td>
                   <td className="px-6 py-5">
-                    <button className="font-semibold text-[var(--color-brand)] transition hover:opacity-80">
-                      Review
-                    </button>
+                    <StatusBadge variant={normalizeStatus(report.status)}>
+                      {getStatusLabel(report.status)}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-6 py-5 text-slate-600">
+                    {report.createdAt
+                      ? new Date(report.createdAt).toLocaleDateString()
+                      : '—'}
                   </td>
                 </tr>
               ))}
