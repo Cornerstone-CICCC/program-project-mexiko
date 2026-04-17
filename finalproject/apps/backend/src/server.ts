@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import path from "path";
@@ -13,14 +13,11 @@ import chatroomRouter from "./routes/chatroom.routes";
 import { connectDB } from "./config/mongodb";
 import dbTestRouter from "./routes/db-test.routes";
 
-// batch
 import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
-// ENV
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-//firebase admin initialization moved to separate file for better error handling and modularity
 console.log("🔍 Verificando variables de entorno...");
 if (!process.env.FIREBASE_PROJECT_ID) {
   console.error("❌ FIREBASE_PROJECT_ID no está definido");
@@ -36,7 +33,6 @@ if (!process.env.FIREBASE_PRIVATE_KEY) {
 }
 console.log("✅ Variables de entorno verificadas");
 
-// Inicializar Firebase Admin (importar esto ejecuta la inicialización)
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
@@ -54,17 +50,28 @@ cron.schedule("00 08 * * *", async () => {
 const app = express();
 const httpServer = createServer(app);
 
+<<<<<<< HEAD
+// ===== SHARED ORIGINS =====
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:8081",
+  "http://localhost:19006",
+  "http://localhost:8082",
+=======
 // ===== SOCKET.IO =====
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:19006",
   "http://localhost:8081",
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 ];
 
+// ===== SOCKET.IO =====
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -87,8 +94,11 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+<<<<<<< HEAD
+=======
 // 🔥 FIX CORS (web + expo + postman safe)
 
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -109,7 +119,6 @@ if (!process.env.COOKIE_PRIMARY_KEY) {
   throw new Error("Missing COOKIE_PRIMARY_KEY!");
 }
 
-// proxy
 app.set("trust proxy", 1);
 
 app.use(
@@ -118,17 +127,15 @@ app.use(
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7days
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 },
   }),
 );
 
-//app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-//app.use("/uploads", express.static("uploads"));
 app.use(
   "/uploads",
   express.static("uploads", {
-    setHeaders: (res, path) => {
-      if (path.endsWith(".m4a")) {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".m4a")) {
         res.setHeader("Content-Type", "audio/m4a");
       }
     },

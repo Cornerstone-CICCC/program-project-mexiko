@@ -174,7 +174,10 @@ export const processMatchInteraction = async (
     throw new Error("Target user is not in this match feed.");
   }
 
+<<<<<<< HEAD
+=======
   // 🔧 FIX defensive
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
   if (!entry?.expiresAt) {
     throw new Error("Match is corrupted (missing expiresAt).");
   }
@@ -198,7 +201,11 @@ export const processMatchInteraction = async (
     },
   );
 
+<<<<<<< HEAD
+  console.log("isOpen result", result);
+=======
   console.log("isOpen  result", result);
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 
   let room = await ChatRoom.findOne({
     participants: {
@@ -220,6 +227,12 @@ export const processMatchInteraction = async (
   console.log("room._id:", room._id);
   console.log("room.roomId:", room.roomId);
 
+<<<<<<< HEAD
+  console.log("room._id:", room._id);
+  console.log("room.roomId:", room.roomId);
+
+=======
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
   return room.roomId;
 };
 
@@ -228,6 +241,11 @@ export const generateDailyMatches = async () => {
     _id: 1,
     mbtiType: 1,
   }).lean();
+<<<<<<< HEAD
+
+  const now = new Date();
+=======
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 
   for (const user of allUsers) {
     const existingFeed = await Match.findOne({ userId: user._id });
@@ -235,7 +253,14 @@ export const generateDailyMatches = async () => {
       continue;
     }
 
+    if (existingFeed && existingFeed.matchedUsers.length > 0) {
+      continue;
+    }
+
     const currentEntries = existingFeed?.matchedUsers ?? [];
+<<<<<<< HEAD
+
+=======
     // const activeTargetIds = currentEntries
     //   .filter((entry) => entry.expiresAt.getTime() > Date.now())
     //   .map((entry) => entry.targetId);
@@ -246,6 +271,7 @@ export const generateDailyMatches = async () => {
       .map((entry) => entry.targetId);
 
     // 🔧 FIX PRINCIPAL
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
     const activeEntries = currentEntries.filter((entry) => {
       if (!entry?.expiresAt) return false;
 
@@ -292,7 +318,13 @@ export const generateDailyMatches = async () => {
       recommendedAt: now,
       expiresAt,
     }));
+<<<<<<< HEAD
+
     console.log("newMatches", newMatches);
+
+=======
+    console.log("newMatches", newMatches);
+>>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
     await Match.findOneAndUpdate(
       { userId: user._id },
       {
