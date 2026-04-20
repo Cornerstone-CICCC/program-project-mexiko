@@ -76,6 +76,8 @@ const ChatRoom = () => {
         `/chatroom/${roomId}?page=${currentPage}`,
       );
 
+      console.log("Room API Response:", response.data);
+
       const {
         room,
         messages: dbMessages = [],
@@ -84,7 +86,12 @@ const ChatRoom = () => {
 
       setMyId(currentUserId);
 
-      if (room && room.participants) {
+      if (
+        room &&
+        room.participants &&
+        Array.isArray(room.participants) &&
+        room.participants.length > 0
+      ) {
         const me = room.participants.find(
           (p: any) => p.firebaseUid === currentUserId,
         );
@@ -92,20 +99,22 @@ const ChatRoom = () => {
           (p: any) => p.firebaseUid !== currentUserId,
         );
 
-        const myMbti = me.mbtiType;
-        const otherMbti = other.mbtiType;
+        const myMbti = me?.mbtiType || me?.mbti || "ENFP";
+        const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
+
+        console.log("MBTI Check:", { myMbti, otherMbti });
+
         const score = calculateSynergy(myMbti, otherMbti);
 
         if (other) {
-          const myMbti = me?.mbtiType || "ENFP";
-          const otherMbti = other.mbtiType;
-          const score = calculateSynergy(myMbti, otherMbti);
-
           setTargetInfo({
             mbti: otherMbti,
             score: score,
           });
         }
+      } else {
+        console.log("⚠️ No participants data found in room object");
+        setTargetInfo({ mbti: "---", score: 0 });
       }
 
       if (dbMessages.length < 50) setHasMore(false);

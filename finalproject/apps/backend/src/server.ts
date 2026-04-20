@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import path from "path";
@@ -13,25 +13,22 @@ import chatroomRouter from "./routes/chatroom.routes";
 import { connectDB } from "./config/mongodb";
 import dbTestRouter from "./routes/db-test.routes";
 
-// batch
 import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
-// ENV
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
-//firebase admin initialization moved to separate file for better error handling and modularity
-console.log("🔍 Verify enviroment variables...");
+console.log("🔍 Verificando variables de entorno...");
 if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error("❌ FIREBASE_PROJECT_ID is not defined");
+  console.error("❌ FIREBASE_PROJECT_ID no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  console.error("❌ FIREBASE_CLIENT_EMAIL is not defined");
+  console.error("❌ FIREBASE_CLIENT_EMAIL no está definido");
   process.exit(1);
 }
 if (!process.env.FIREBASE_PRIVATE_KEY) {
-  console.error("❌ FIREBASE_PRIVATE_KEY is not defined");
+  console.error("❌ FIREBASE_PRIVATE_KEY no está definido");
   process.exit(1);
 }
 console.log("✅ Variables de entorno verificadas");
@@ -39,8 +36,9 @@ console.log("✅ Variables de entorno verificadas");
 // Initialize Firebase Admin
 import "./config/firebase-admin";
 
-// ===== CRON =====
-cron.schedule("0 8 * * *", async () => {
+// ===== CRON ===== batch
+cron.schedule("00 08 * * *", async () => {
+  // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
     await generateDailyMatches();
@@ -53,22 +51,25 @@ cron.schedule("0 8 * * *", async () => {
 const app = express();
 const httpServer = createServer(app);
 
-// ===== SOCKET.IO =====
+// ===== SHARED ORIGINS =====
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:19006",
   "http://localhost:8081",
 
   // Expo in your local network
   "http://10.0.0.132:19006",
   "http://10.0.0.132:8081",
   "exp://10.0.0.132:19000",
+  "http://localhost:19006",
+  "http://localhost:8082",
 ];
 
+// ===== SOCKET.IO =====
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -113,7 +114,6 @@ if (!process.env.COOKIE_PRIMARY_KEY) {
   throw new Error("Missing COOKIE_PRIMARY_KEY!");
 }
 
-// proxy
 app.set("trust proxy", 1);
 
 app.use(
@@ -122,22 +122,15 @@ app.use(
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    },
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 },
   }),
 );
 
-//app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-//app.use("/uploads", express.static("uploads"));
 app.use(
   "/uploads",
   express.static("uploads", {
-    setHeaders: (res, path) => {
-      if (path.endsWith(".m4a")) {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".m4a")) {
         res.setHeader("Content-Type", "audio/m4a");
       }
     },
