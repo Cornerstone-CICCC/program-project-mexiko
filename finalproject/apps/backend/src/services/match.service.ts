@@ -8,20 +8,6 @@ const DAILY_MATCH_COUNT = 5;
 const RECOMMENDATION_TTL_MS = 24 * 60 * 60 * 1000;
 const CHATROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-type PopulatedTargetUser = {
-  _id?: mongoose.Types.ObjectId;
-  email?: string;
-  fullName?: { first?: string; last?: string };
-  mbtiType?: string;
-  images?: string[];
-  bio?: string;
-};
-
-type AggregatedTarget = {
-  _id: mongoose.Types.ObjectId;
-  mbtiType: string;
-};
-
 const getUserByFirebaseUid = async (firebaseUid: string) => {
   const user = await User.findOne({ firebaseUid });
 
@@ -31,16 +17,6 @@ const getUserByFirebaseUid = async (firebaseUid: string) => {
 
   return user;
 };
-
-const buildEligibleUserFilter = (
-  excludedIds: mongoose.Types.ObjectId[] = [],
-) => ({
-  _id: { $nin: excludedIds },
-  mbtiType: { $nin: [null, "", "NOT_SPECIFIED"] },
-  mbtiTestchecked: true,
-  isDeleted: { $ne: true },
-  isSuspended: { $ne: true },
-});
 
 export const getMatchingList = async (firebaseUid: string) => {
   const currentUser = await getUserByFirebaseUid(firebaseUid);
@@ -58,7 +34,14 @@ export const getMatchingList = async (firebaseUid: string) => {
   const activeMatches = matchFeed.matchedUsers
     .filter((entry) => entry.expiresAt > now && entry.isOpened === false)
     .map((entry) => {
-      const targetUser = entry.targetId as unknown as PopulatedTargetUser;
+      const targetUser = entry.targetId as unknown as {
+        _id?: mongoose.Types.ObjectId;
+        email?: string;
+        fullName?: { first?: string; last?: string };
+        mbtiType?: string;
+        images?: string[];
+        bio?: string;
+      };
 
       return {
         matchId: matchFeed._id.toString(),
@@ -104,16 +87,9 @@ export const createMatchRequest = async (
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
-
-  const currentMbti = currentUser.mbtiType;
-  const targetMbti = targetUser.mbtiType;
-
   const synergyScore =
-    currentMbti &&
-    targetMbti &&
-    currentMbti !== "NOT_SPECIFIED" &&
-    targetMbti !== "NOT_SPECIFIED"
-      ? calculateSynergy(currentMbti, targetMbti)
+    currentUser.mbtiType && targetUser.mbtiType
+      ? calculateSynergy(currentUser.mbtiType, targetUser.mbtiType)
       : 0;
 
   const existingFeed = await Match.findOne({ userId: currentUser._id });
@@ -157,8 +133,16 @@ export const processMatchInteraction = async (
 ) => {
   const currentUser = await getUserByFirebaseUid(firebaseUid);
 
+  if (!mongoose.Types.ObjectId.isValid(matchId)) {
+    throw new Error("Invalid match id.");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+    throw new Error("Invalid target user id.");
+  }
+
   const matchFeed = await Match.findOne({
-    _id: new mongoose.Types.ObjectId(matchId),
+    _id: matchId,
     userId: currentUser._id,
   });
 
@@ -174,17 +158,7 @@ export const processMatchInteraction = async (
     throw new Error("Target user is not in this match feed.");
   }
 
-<<<<<<< HEAD
-=======
-  // 🔧 FIX defensive
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
-  if (!entry?.expiresAt) {
-    throw new Error("Match is corrupted (missing expiresAt).");
-  }
-
-  const expiresAt = new Date(entry.expiresAt);
-
-  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+  if (entry.expiresAt.getTime() < Date.now()) {
     throw new Error("Match recommendation expired.");
   }
 
@@ -201,15 +175,11 @@ export const processMatchInteraction = async (
     },
   );
 
-<<<<<<< HEAD
-  console.log("isOpen result", result);
-=======
   console.log("isOpen  result", result);
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 
   let room = await ChatRoom.findOne({
     participants: {
-      $all: [currentUserParticipantId, targetParticipantId],
+      $all: [currentUser._id, new mongoose.Types.ObjectId(targetUserId)],
     },
   });
 
@@ -227,125 +197,146 @@ export const processMatchInteraction = async (
   console.log("room._id:", room._id);
   console.log("room.roomId:", room.roomId);
 
-<<<<<<< HEAD
-  console.log("room._id:", room._id);
-  console.log("room.roomId:", room.roomId);
-
-=======
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
   return room.roomId;
 };
 
 export const generateDailyMatches = async () => {
-  const allUsers = await User.find(buildEligibleUserFilter(), {
-    _id: 1,
-    mbtiType: 1,
-  }).lean();
-<<<<<<< HEAD
+  console.log("🚀 Starting Daily Match Generation...");
 
-  const now = new Date();
-=======
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
-
-  for (const user of allUsers) {
-    const existingFeed = await Match.findOne({ userId: user._id });
-    if (existingFeed && existingFeed.matchedUsers.length > 0) {
-      continue;
-    }
-
-    if (existingFeed && existingFeed.matchedUsers.length > 0) {
-      continue;
-    }
-
-    const currentEntries = existingFeed?.matchedUsers ?? [];
-<<<<<<< HEAD
-
-=======
-    // const activeTargetIds = currentEntries
-    //   .filter((entry) => entry.expiresAt.getTime() > Date.now())
-    //   .map((entry) => entry.targetId);
-    const activeTargetIds = currentEntries
-      .filter(
-        (entry) => entry.expiresAt && entry.expiresAt.getTime() > Date.now(),
-      )
-      .map((entry) => entry.targetId);
-
-    // 🔧 FIX PRINCIPAL
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
-    const activeEntries = currentEntries.filter((entry) => {
-      if (!entry?.expiresAt) return false;
-
-      const expiresAt =
-        entry.expiresAt instanceof Date
-          ? entry.expiresAt
-          : new Date(entry.expiresAt);
-
-      return (
-        !Number.isNaN(expiresAt.getTime()) &&
-        expiresAt.getTime() > now.getTime()
-      );
+  try {
+    const allUsers = await User.find({
+      mbtiType: { $exists: true, $ne: null },
+      isDeleted: { $ne: true },
     });
 
-    const activeTargetIds = activeEntries.map(
-      (entry) => new mongoose.Types.ObjectId(entry.targetId.toString()),
-    );
+    const now = new Date();
 
-    const excludedIds: mongoose.Types.ObjectId[] = [
-      new mongoose.Types.ObjectId(user._id.toString()),
-      ...activeTargetIds,
-    ];
+    for (const user of allUsers) {
+      console.log(
+        `Checking match for user: ${user.fullName?.first} (${user._id})`,
+      );
 
-    const remainingSlots = Math.max(
-      0,
-      DAILY_MATCH_COUNT - activeEntries.length,
-    );
+      const existingFeed = await Match.findOne({ userId: user._id });
+      const currentEntries = existingFeed?.matchedUsers ?? [];
 
-    if (remainingSlots === 0) continue;
+      const activeEntries = currentEntries.filter(
+        (entry) => entry.expiresAt > now && entry.isOpened === false,
+      );
 
-    const targets = await User.aggregate<AggregatedTarget>([
-      { $match: buildEligibleUserFilter(excludedIds) },
-      { $sample: { size: remainingSlots } },
-      { $project: { _id: 1, mbtiType: 1 } },
-    ]);
+      if (activeEntries.length >= DAILY_MATCH_COUNT) {
+        continue;
+      }
 
-    const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
-    const userMbti = String(user.mbtiType);
+      const excludedIds = [user._id, ...activeEntries.map((e) => e.targetId)];
+      const slotsNeeded = DAILY_MATCH_COUNT - activeEntries.length;
 
-    const newMatches = targets.map((target) => ({
-      targetId: target._id,
-      synergyScore: calculateSynergy(userMbti, String(target.mbtiType)),
-      isOpened: false,
-      recommendedAt: now,
-      expiresAt,
-    }));
-<<<<<<< HEAD
-
-    console.log("newMatches", newMatches);
-
-=======
-    console.log("newMatches", newMatches);
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
-    await Match.findOneAndUpdate(
-      { userId: user._id },
-      {
-        $set: {
-          matchedUsers: [
-            ...currentEntries.filter(
-              (entry) => entry.expiresAt > now && entry.isOpened === false,
-            ),
-            ...newMatches,
-          ],
+      const targets = await User.aggregate([
+        {
+          $match: {
+            _id: { $nin: excludedIds },
+            mbtiType: { $exists: true, $ne: null },
+            isDeleted: { $ne: true },
+          },
         },
-        // $set: {
-        //   matchedUsers: newMatches,
-        // },
-      },
-      {
-        upsert: true,
-        new: true,
-      },
-    );
-  }
+        { $sample: { size: slotsNeeded } },
+      ]);
 
-  console.log("Daily match recommendations refreshed successfully.");
+      if (targets.length === 0) continue;
+
+      const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
+
+      const newMatches = targets.map((target) => ({
+        targetId: target._id,
+        synergyScore: calculateSynergy(user.mbtiType, target.mbtiType),
+        isOpened: false,
+        recommendedAt: now,
+        expiresAt,
+      }));
+
+      await Match.findOneAndUpdate(
+        { userId: user._id },
+        {
+          $set: {
+            matchedUsers: [...activeEntries, ...newMatches],
+          },
+        },
+        { upsert: true, returnDocument: "after" },
+      );
+    }
+
+    console.log("✅ Daily match recommendations refreshed successfully.");
+  } catch (error) {
+    console.error("❌ Error in generateDailyMatches:", error);
+  }
 };
+
+// export const generateDailyMatches = async () => {
+//   const allUsers = await User.find({
+//     mbtiType: { $exists: true, $ne: null },
+//     isDeleted: { $ne: true },
+//   });
+
+//   for (const user of allUsers) {
+//     const existingFeed = await Match.findOne({ userId: user._id });
+//     if (existingFeed && existingFeed.matchedUsers.length > 0) {
+//       continue;
+//     }
+
+//     const currentEntries = existingFeed?.matchedUsers ?? [];
+//     // const activeTargetIds = currentEntries
+//     //   .filter((entry) => entry.expiresAt.getTime() > Date.now())
+//     //   .map((entry) => entry.targetId);
+//     const activeTargetIds = currentEntries
+//       .filter(
+//         (entry) => entry.expiresAt && entry.expiresAt.getTime() > Date.now(),
+//       )
+//       .map((entry) => entry.targetId);
+
+//     const excludedIds = [user._id, ...activeTargetIds];
+
+//     const targets = await User.aggregate([
+//       {
+//         $match: {
+//           _id: { $nin: excludedIds },
+//           mbtiType: { $exists: true, $ne: null },
+//           isDeleted: { $ne: true },
+//         },
+//       },
+//       { $sample: { size: DAILY_MATCH_COUNT } },
+//     ]);
+
+//     const now = new Date();
+//     const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
+
+//     const newMatches = targets.map((target) => ({
+//       targetId: target._id,
+//       synergyScore: calculateSynergy(user.mbtiType, target.mbtiType),
+//       isOpened: false,
+//       recommendedAt: now,
+//       expiresAt,
+//     }));
+//     console.log("newMatches", newMatches);
+//     await Match.findOneAndUpdate(
+//       { userId: user._id },
+//       {
+//         $set: {
+//           matchedUsers: [
+//             ...currentEntries.filter(
+//               (entry) => entry.expiresAt > now && entry.isOpened === false,
+//             ),
+//             ...newMatches,
+//           ],
+//         },
+//         // $set: {
+//         //   matchedUsers: newMatches,
+//         // },
+//       },
+//       {
+//         upsert: true,
+//         new: true,
+//       },
+//     );
+//   }
+
+//   console.log("Daily match recommendations refreshed successfully.");
+// };

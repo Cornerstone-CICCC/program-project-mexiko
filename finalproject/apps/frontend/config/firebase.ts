@@ -1,20 +1,21 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   initializeAuth,
+  getAuth,
   getReactNativePersistence,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendEmailVerification
-} from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  sendEmailVerification,
+} from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   FIREBASE_API_KEY,
   FIREBASE_AUTH_DOMAIN,
   FIREBASE_PROJECT_ID,
   FIREBASE_STORAGE_BUCKET,
   FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID
-} from '@env';
+  FIREBASE_APP_ID,
+} from "@env";
 
 const firebaseConfig = {
   apiKey: FIREBASE_API_KEY,
@@ -22,23 +23,26 @@ const firebaseConfig = {
   projectId: FIREBASE_PROJECT_ID,
   storageBucket: FIREBASE_STORAGE_BUCKET,
   messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
-  appId: FIREBASE_APP_ID
+  appId: FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Use AsyncStorage so Firebase auth state persists across app restarts on Android.
-// Without this, the web SDK defaults to localStorage (unavailable in React Native),
-// causing the user to be logged out every time the app is killed.
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+let auth;
 
-console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch (e) {
+  auth = getAuth(app);
+}
+
+console.log("✅ Firebase Auth initialized");
 
 export {
   auth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  sendEmailVerification
+  sendEmailVerification,
 };
