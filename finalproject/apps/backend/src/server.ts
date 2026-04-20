@@ -33,6 +33,7 @@ if (!process.env.FIREBASE_PRIVATE_KEY) {
 }
 console.log("✅ Variables de entorno verificadas");
 
+// Initialize Firebase Admin
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
@@ -54,6 +55,11 @@ const httpServer = createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8081",
+
+  // Expo in your local network
+  "http://10.0.0.132:19006",
+  "http://10.0.0.132:8081",
+  "exp://10.0.0.132:19000",
   "http://localhost:19006",
   "http://localhost:8082",
 ];
@@ -148,8 +154,8 @@ const startServer = async () => {
     await connectDB();
     console.log("Database connected successfully.");
 
-    const PORT = process.env.PORT || 3500;
-    httpServer.listen(PORT, () => {
+    const PORT = Number(process.env.PORT) || 3500;
+    httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
