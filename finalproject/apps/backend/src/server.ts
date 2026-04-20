@@ -50,20 +50,12 @@ cron.schedule("00 08 * * *", async () => {
 const app = express();
 const httpServer = createServer(app);
 
-<<<<<<< HEAD
 // ===== SHARED ORIGINS =====
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8081",
   "http://localhost:19006",
   "http://localhost:8082",
-=======
-// ===== SOCKET.IO =====
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:19006",
-  "http://localhost:8081",
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 ];
 
 // ===== SOCKET.IO =====
@@ -94,11 +86,8 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-<<<<<<< HEAD
-=======
 // 🔥 FIX CORS (web + expo + postman safe)
 
->>>>>>> a1283ab211b63a9ad811b98d95e8fff6c9eebb22
 app.use(
   cors({
     origin: (origin, callback) => {
