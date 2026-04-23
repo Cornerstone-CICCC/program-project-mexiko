@@ -8,6 +8,11 @@ const DAILY_MATCH_COUNT = 5;
 const RECOMMENDATION_TTL_MS = 24 * 60 * 60 * 1000;
 const CHATROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+type MatchFilters = {
+  gender?: string;
+  maxDistance?: number;
+};
+
 const getUserByFirebaseUid = async (firebaseUid: string) => {
   const user = await User.findOne({ firebaseUid });
 
@@ -18,11 +23,45 @@ const getUserByFirebaseUid = async (firebaseUid: string) => {
   return user;
 };
 
-export const getMatchingList = async (firebaseUid: string) => {
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const calculateDistanceKm = (
+  fromCoordinates: number[],
+  toCoordinates: number[],
+): number => {
+  const [fromLng, fromLat] = fromCoordinates;
+  const [toLng, toLat] = toCoordinates;
+
+  const earthRadiusKm = 6371;
+
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(fromLat)) *
+      Math.cos(toRadians(toLat)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+};
+
+export const getMatchingList = async (
+  firebaseUid: string,
+  filters: MatchFilters = {},
+) => {
   const currentUser = await getUserByFirebaseUid(firebaseUid);
 
+  const currentUserCoordinates = currentUser.location?.coordinates ?? [0, 0];
+
   const matchFeed = await Match.findOne({ userId: currentUser._id })
-    .populate("matchedUsers.targetId", "email fullName mbtiType images bio")
+    .populate(
+      "matchedUsers.targetId",
+      "email fullName mbtiType images bio gender location"
+    )
     .lean();
 
   if (!matchFeed) {
@@ -41,7 +80,18 @@ export const getMatchingList = async (firebaseUid: string) => {
         mbtiType?: string;
         images?: string[];
         bio?: string;
+        gender?: string;
+        location?: {
+          type?: string;
+          coordinates?: number[];
+        };
       };
+
+      const targetCoordinates = targetUser?.location?.coordinates ?? [0, 0];
+      const distanceKm = calculateDistanceKm(
+        currentUserCoordinates,
+        targetCoordinates,
+      );
 
       return {
         matchId: matchFeed._id.toString(),
@@ -50,14 +100,28 @@ export const getMatchingList = async (firebaseUid: string) => {
         isOpened: entry.isOpened,
         recommendedAt: entry.recommendedAt,
         expiresAt: entry.expiresAt,
+        distanceKm,
         targetUser: {
           email: targetUser?.email ?? null,
           fullName: targetUser?.fullName ?? null,
           mbtiType: targetUser?.mbtiType ?? null,
           images: targetUser?.images ?? [],
           bio: targetUser?.bio ?? null,
+          gender: targetUser?.gender ?? null,
         },
       };
+    })
+    .filter((entry) => {
+      const genderMatches =
+        !filters.gender ||
+        filters.gender === "All" ||
+        entry.targetUser.gender === filters.gender;
+
+      const distanceMatches =
+        typeof filters.maxDistance !== "number" ||
+        entry.distanceKm <= filters.maxDistance;
+
+      return genderMatches && distanceMatches;
     })
     .sort((a, b) => b.synergyScore - a.synergyScore)
     .slice(0, 5);
@@ -269,74 +333,3 @@ export const generateDailyMatches = async () => {
     console.error("❌ Error in generateDailyMatches:", error);
   }
 };
-
-// export const generateDailyMatches = async () => {
-//   const allUsers = await User.find({
-//     mbtiType: { $exists: true, $ne: null },
-//     isDeleted: { $ne: true },
-//   });
-
-//   for (const user of allUsers) {
-//     const existingFeed = await Match.findOne({ userId: user._id });
-//     if (existingFeed && existingFeed.matchedUsers.length > 0) {
-//       continue;
-//     }
-
-//     const currentEntries = existingFeed?.matchedUsers ?? [];
-//     // const activeTargetIds = currentEntries
-//     //   .filter((entry) => entry.expiresAt.getTime() > Date.now())
-//     //   .map((entry) => entry.targetId);
-//     const activeTargetIds = currentEntries
-//       .filter(
-//         (entry) => entry.expiresAt && entry.expiresAt.getTime() > Date.now(),
-//       )
-//       .map((entry) => entry.targetId);
-
-//     const excludedIds = [user._id, ...activeTargetIds];
-
-//     const targets = await User.aggregate([
-//       {
-//         $match: {
-//           _id: { $nin: excludedIds },
-//           mbtiType: { $exists: true, $ne: null },
-//           isDeleted: { $ne: true },
-//         },
-//       },
-//       { $sample: { size: DAILY_MATCH_COUNT } },
-//     ]);
-
-//     const now = new Date();
-//     const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
-
-//     const newMatches = targets.map((target) => ({
-//       targetId: target._id,
-//       synergyScore: calculateSynergy(user.mbtiType, target.mbtiType),
-//       isOpened: false,
-//       recommendedAt: now,
-//       expiresAt,
-//     }));
-//     console.log("newMatches", newMatches);
-//     await Match.findOneAndUpdate(
-//       { userId: user._id },
-//       {
-//         $set: {
-//           matchedUsers: [
-//             ...currentEntries.filter(
-//               (entry) => entry.expiresAt > now && entry.isOpened === false,
-//             ),
-//             ...newMatches,
-//           ],
-//         },
-//         // $set: {
-//         //   matchedUsers: newMatches,
-//         // },
-//       },
-//       {
-//         upsert: true,
-//         new: true,
-//       },
-//     );
-//   }
-
-//   console.log("Daily match recommendations refreshed successfully.");
-// };
