@@ -9,7 +9,7 @@ import {
   Modal,
   Alert,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Stack, Link, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
@@ -23,10 +23,50 @@ axios.defaults.baseURL = SERVER_URL;
 axios.defaults.withCredentials = true;
 
 const chatSettings = () => {
-  const { id } = useLocalSearchParams();
+  const { id, gender, name } = useLocalSearchParams();
+  console.log("name", name);
   console.log("id", id);
+  console.log("chatroom");
+
   const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
+
+  const [me, setMe] = useState<any>(null);
+  const [otherUser, setOtherUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInfo = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`/chatroom/${id}`);
+        const { room, myId } = response.data;
+
+        const myData = room.participants.find(
+          (p: any) => p.firebaseUid === myId,
+        );
+        const otherData = room.participants.find(
+          (p: any) => p.firebaseUid !== myId,
+        );
+
+        setMe(myData);
+        setOtherUser(otherData);
+      } catch (error) {
+        console.error("data loading failed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchInfo();
+  }, [id]);
+
+  const getProfileImage = (userGender?: string) => {
+    if (userGender === "Female") {
+      return require("@/assets/images/girl-profile-pink.png");
+    }
+    return require("@/assets/images/man-profile-gray.png");
+  };
 
   const [isNotifEnabled, setIsNotifEnabled] = useState(true);
 
@@ -65,16 +105,17 @@ const chatSettings = () => {
   const handleBlockUser = async (roomId: string) => {
     try {
       const response = await axios.post(`/chatroom/${roomId}/block`);
-
       if (response.data.success) {
         setBlockModalVisible(false);
-        Alert.alert("Blocked", "User has been blocked successfully.");
 
-        router.push("/(dashboard)/chat");
+        Alert.alert(
+          "Blocked",
+          `${otherUser?.mbtiType || "User"} has been blocked.`,
+        );
+        router.replace("/(dashboard)/chat");
       }
-    } catch (error: any) {
-      console.error("❌ Failed to block user:", error);
-      Alert.alert("Error", "Could not block user. Please try again.");
+    } catch (error) {
+      Alert.alert("Error", "Could not block user.");
     }
   };
 
@@ -107,18 +148,18 @@ const chatSettings = () => {
         <View className="bg-grey-600 p-10 items-center ">
           <View className="w-32 h-32 bg-slate-200 rounded-full relative">
             <Image
-              source={
-                image
-                  ? { uri: image }
-                  : require("@/assets/images/man-profile-gray.png")
-              }
+              source={getProfileImage(me?.gender)}
               style={{ width: "100%", height: "100%", borderRadius: 100 }}
               resizeMode="cover"
             />
           </View>
 
           <View className="flex-row justify-between items-center mb-5">
-            <Text className="text-2xl font-bold text-slate-900">Dueon Han</Text>
+            <Text className="text-2xl font-bold text-slate-900">
+              {typeof me?.fullName === "object"
+                ? `${me.fullName.first} ${me.fullName.last}`
+                : me?.fullName || "My Profile"}
+            </Text>
             <Link href="/1/edit" asChild>
               <TouchableOpacity>
                 <Entypo name="pencil" size={24} color="#6366f1" />

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { chatService } from "../services/chatroom.service";
 import { Message } from "../models/message.model";
+import { ChatRoom } from "../models/chatroom.model";
 
 export const listRooms = async (req: Request, res: Response) => {
   try {
@@ -36,6 +37,14 @@ export const getRoom = async (req: Request, res: Response) => {
       io.to(roomId).emit("messages_read", { roomId, userId });
     }
     const result = await chatService.getRoomDetails(roomId, userId, page);
+
+    //check block user
+    if (result.room.blockedBy && result.room.blockedBy.includes(userId)) {
+      return res
+        .status(403)
+        .json({ error: "You have blocked this user or been blocked." });
+    }
+
     return res.status(200).json({ ...result, myId: userId });
   } catch (e: any) {
     console.error("❌ [Controller] catch error:", e.message);
@@ -66,6 +75,13 @@ export const postMessage = async (req: Request, res: Response) => {
   try {
     const roomId = req.params.roomId;
     const userId = req.session.userId;
+
+    const room = await ChatRoom.findOne({ roomId });
+    if (room?.blockedBy && room.blockedBy.length > 0) {
+      return res
+        .status(403)
+        .json({ error: "Cannot send messages in a blocked chat." });
+    }
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -104,41 +120,49 @@ export const postMessage = async (req: Request, res: Response) => {
     const clientsInRoom = io?.sockets.adapter.rooms.get(roomId);
     const isRecipientPresent = clientsInRoom && clientsInRoom.size > 1;
 
-    const message = await chatService.sendMessage(
+    const newMessage = await chatService.sendMessage(
       roomId,
       userId,
       content,
       messageType || "text",
     );
 
+    const unreadCount = await Message.countDocuments({
+      chatRoomId: roomId,
+      senderId: { $ne: userId },
+      isRead: false,
+    });
+
     if (isRecipientPresent) {
-      message.isRead = true;
-      await message.save();
+      newMessage.isRead = true;
+      await newMessage.save();
     }
 
     if (io) {
-      io.to(roomId).emit("receive_message", message);
+      io.to(roomId).emit("receive_message", newMessage);
 
-      await Message.findByIdAndUpdate(message._id, { isDelivered: true });
-      io.to(roomId).emit("message_delivered", { messageId: message._id });
+      await Message.findByIdAndUpdate(newMessage._id, { isDelivered: true });
+      io.to(roomId).emit("message_delivered", { messageId: newMessage._id });
 
       if (isRecipientPresent) {
         io.to(roomId).emit("messages_read", { roomId, userId });
       }
+      console.log("unreadCount", unreadCount);
 
       io.emit("update_chat_list", {
-        roomId: message.chatRoomId,
+        roomId: newMessage.chatRoomId,
         lastMessage:
-          message.messageType === "text"
-            ? message.content
-            : `[${message.messageType}]`,
-        updatedAt: message.createdAt,
-        senderId: message.senderId,
+          newMessage.messageType === "text"
+            ? newMessage.content
+            : `[${newMessage.messageType}]`,
+        updatedAt: newMessage.createdAt,
+        senderId: newMessage.senderId,
         isRead: isRecipientPresent,
+        unreadCount,
       });
     }
 
-    return res.status(201).json({ data: message });
+    return res.status(201).json({ data: newMessage, unreadCount });
   } catch (e: any) {
     console.error("❌ postMessage Error:", e.message);
     res.status(500).json({ error: e.message });
@@ -148,7 +172,14 @@ export const postMessage = async (req: Request, res: Response) => {
 export const removeRoom = async (req: Request, res: Response) => {
   try {
     const roomId = req.params.roomId as string;
-    await chatService.deleteRoom(roomId, req.userId!);
+    const userId = req.session.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.log(`roomId: ${roomId} , userId: ${userId} `);
+    await chatService.deleteRoom(roomId, userId);
+
     res.status(200).json({ message: "Chat room deleted successfully." });
   } catch (e: unknown) {
     const message =
@@ -211,5 +242,47 @@ export const blockUser = async (req: Request, res: Response) => {
   } catch (e: any) {
     console.error("❌ blockUser Error:", e.message);
     res.status(500).json({ error: "Failed to block user" });
+  }
+};
+
+export const toggleReveal = async (req: Request, res: Response) => {
+  try {
+    const roomId = req.params.roomId;
+    const userId = req.session.userId;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!roomId) return res.status(400).json({ error: "Room ID is required" });
+
+    const updatedRoom = await chatService.toggleReveal(roomId, userId);
+
+    if (!updatedRoom) {
+      return res
+        .status(404)
+        .json({ error: "Chat room not found after update." });
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(roomId).emit("receive_reveal_request", { senderId: userId });
+
+      if (updatedRoom.isRevealed) {
+        io.to(roomId).emit("profiles_revealed", {
+          roomId,
+          status: updatedRoom.status,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        consent: updatedRoom.consent,
+        isRevealed: updatedRoom.isRevealed,
+        status: updatedRoom.status,
+      },
+    });
+  } catch (e: any) {
+    console.error("❌ toggleReveal Error:", e.message);
+    res.status(500).json({ error: e.message });
   }
 };

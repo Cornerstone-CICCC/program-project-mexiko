@@ -14,6 +14,7 @@ import axios from "axios";
 import { ActivityIndicator } from "react-native-paper";
 import { getSocket } from "../utils/socket";
 import { calculateSynergy } from "@/utils/mbti";
+import { Ionicons } from "@expo/vector-icons";
 
 // 1. Axios Configuration
 axios.defaults.baseURL = "http://localhost:3500";
@@ -22,6 +23,8 @@ axios.defaults.withCredentials = true;
 interface Participant {
   firebaseUid: string;
   mbtiType: string;
+  lastLogin?: string;
+  gender?: "Male" | "Female" | "Other";
 }
 interface Room {
   _id: string;
@@ -45,9 +48,7 @@ const chat = () => {
     score: number;
   } | null>(null);
 
-  const [currentUserId, setCurrentUserId] = useState(
-    "qxLtr5RqApbDDBvr5OTifLA70P33",
-  );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const getRemainingTime = (lastActiveAt: string) => {
     if (!lastActiveAt) return "just";
@@ -110,17 +111,24 @@ const chat = () => {
         }
 
         const updatedRooms = [...prevRooms];
-        const targetRoom = updatedRooms[roomIndex];
+        //const targetRoom = updatedRooms[roomIndex];
+        const targetRoom = { ...updatedRooms[roomIndex] };
 
-        const isNewMessageFromOther = data.senderId !== currentUserId;
+        //const isNewMessageFromOther = data.senderId !== currentUserId;
+        const isNewMessageFromOther =
+          String(data.senderId) !== String(currentUserId);
+        const increment = data.incrementUnread === true;
 
         updatedRooms[roomIndex] = {
           ...targetRoom,
           lastMessage: data.lastMessage,
           lastMessageIsRead: data.isRead,
           lastMessageSenderId: data.senderId,
-          unreadCount:
-            (targetRoom.unreadCount || 0) + Number(isNewMessageFromOther),
+
+          unreadCount: increment
+            ? (targetRoom.unreadCount || 0) + 1
+            : targetRoom.unreadCount || 0,
+
           updatedAt: data.updatedAt,
         };
 
@@ -158,8 +166,8 @@ const chat = () => {
   // temporary code
   const createTestChatRoom = async () => {
     try {
-      const testUserObjectId = "69d42c9dfbea4e811c7c2e83";
-      const mockMatchId = "69bc41808fc000fbfa084c40";
+      const testUserObjectId = "69bc41808fc000fbfa084c40";
+      const mockMatchId = "qxLtr5RqApbDDBvr5OTifLA70P33";
 
       const response = await axios.post("/chatroom", {
         targetId: testUserObjectId,
@@ -173,6 +181,37 @@ const chat = () => {
     } catch (error) {
       console.error("Creation error:", error.response?.data || error.message);
       Alert.alert("Error", "Failed to create room. Check server logs.");
+    }
+  };
+
+  const createTripleTestRooms = async () => {
+    try {
+      const myId = "CFYJpRsHtafu8TKEmIxCjeygTSC2"; // Reference Account (Me)
+      const targetIds = [
+        "uCgN2uEfq1ZgvTAYqQ60iyVxK4u1",
+        "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
+        "qxLtr5RqApbDDBvr5OTifLA70P33",
+      ];
+
+      for (const targetId of targetIds) {
+        const response = await axios.post("/chatroom", {
+          targetId: targetId, // Recipient
+          matchId: myId, // Requester (Me)
+        });
+        console.log(
+          `Chat room created successfully with: ${targetId}`,
+          response.data,
+        );
+      }
+
+      Alert.alert("Success", "Three test chat rooms have been created.");
+      fetchRooms(); // Refresh the chat list
+    } catch (error) {
+      console.error("Creation Error:", error.response?.data || error.message);
+      Alert.alert(
+        "Error",
+        "Failed to create chat rooms. Please check the console for details.",
+      );
     }
   };
 
@@ -214,7 +253,7 @@ const chat = () => {
               <Text className="text-slate-500">Your active conversations</Text>
             </View>
             <Pressable
-              onPress={createTestChatRoom}
+              onPress={createTripleTestRooms}
               className="bg-indigo-100 px-3 py-2 rounded-lg"
             >
               <Text className="text-indigo-600 font-bold">Test Create</Text>
@@ -222,7 +261,7 @@ const chat = () => {
           </View>
 
           {/* --- [Mock Room 1] --- */}
-          {showRoom1 && (
+          {/*showRoom1 && (
             <Pressable
               onPress={() => router.push("/(chat)/room/1")}
               onLongPress={() => handleLeaveChat("1", true)}
@@ -255,30 +294,74 @@ const chat = () => {
                 </Text>
               </View>
             </Pressable>
-          )}
+          )*/}
 
           {/* --- [Real DB Rooms] --- */}
           {loading ? (
             <ActivityIndicator size="small" color="#4F46E5" />
+          ) : rooms.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={80}
+                  color="#CBD5E1"
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No active chats yet</Text>
+              <Text style={styles.emptySubTitle}>
+                Start matching with people to begin a new conversation!
+              </Text>
+              <Pressable
+                onPress={() => router.push("/(dashboard)/")}
+                className="bg-indigo-500 px-6 py-3 rounded-2xl mt-6 shadow-sm shadow-indigo-300"
+              >
+                <Text className="text-white font-bold text-lg">
+                  Find Matches
+                </Text>
+              </Pressable>
+            </View>
           ) : (
+            //rooms.map((room) => {
+            // [...rooms]
+            //   .sort(
+            //     (a, b) =>
+            //       new Date(b.updatedAt).getTime() -
+            //       new Date(a.updatedAt).getTime(),
+            //   )
             rooms.map((room) => {
               if (!room.participants || !Array.isArray(room.participants))
                 return null;
 
-              const me = room.participants.find(
-                (p) => p.firebaseUid === currentUserId,
-              );
+              const other = (room as any).otherParticipant;
+              const me = (room as any).me;
+
+              if (!other) return null;
 
               const otherParticipant = room.participants.find(
-                (p) =>
-                  p.firebaseUid &&
-                  String(p.firebaseUid) !== String(currentUserId),
+                (p) => String(p.firebaseUid) !== String(currentUserId),
               );
+
+              console.log(
+                "Other Participant Gender:",
+                otherParticipant?.gender,
+              );
+
+              const getProfileImage = (gender?: string) => {
+                if (gender === "Female") {
+                  return require("@/assets/images/girl-profile.png");
+                }
+                return require("@/assets/images/man-profile-gray.png");
+              };
+
+              const displayTime = otherParticipant?.lastLogin
+                ? getRemainingTime(otherParticipant.lastLogin)
+                : getRemainingTime(room.updatedAt);
 
               const targetMbti =
                 otherParticipant?.mbtiType ||
                 (otherParticipant as any)?.mbti ||
-                "---";
+                "Unknown";
 
               const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
 
@@ -297,7 +380,7 @@ const chat = () => {
                   <View className="relative w-16 h-16">
                     <View className="w-16 h-16 bg-slate-200 rounded-full overflow-hidden">
                       <Image
-                        source={require("@/assets/images/girl-profile-pink.png")}
+                        source={getProfileImage(otherParticipant?.gender)}
                         style={styles.profileImg}
                       />
                     </View>
@@ -311,7 +394,8 @@ const chat = () => {
                           textAlignVertical: "center",
                         }}
                       >
-                        {getRemainingTime(room.updatedAt)}
+                        {/*getRemainingTime(room.updatedAt)*/}
+                        {displayTime}
                       </Text>
                     </View>
                   </View>
@@ -320,7 +404,12 @@ const chat = () => {
                     <View className="flex-row items-center justify-between mb-1">
                       <View className="flex-row items-center">
                         <Text className="text-xl font-bold text-slate-800 mr-2">
-                          {targetMbti}
+                          {other?.fullName?.first
+                            ? `${other.fullName.first} ${other.fullName.last || ""}`
+                            : other.mbtiType}
+                        </Text>
+                        <Text className="text-xl font-bold text-slate-800 mr-2">
+                          {other.mbtiType}
                         </Text>
                         <View className="bg-green-100 px-2 py-0.5 rounded-full">
                           <Text className="text-green-600 text-[10px] font-bold">
@@ -345,12 +434,11 @@ const chat = () => {
                       numberOfLines={1}
                     >
                       {/*room.lastMessage || "Start a new conversation!"*/}
-                      {typeof room.lastMessage === "string"
-                        ? room.lastMessage
-                        : typeof room.lastMessage === "object" &&
-                            room.lastMessage !== null
-                          ? "[Can't check content]"
-                          : "Start a new conversation!"}
+                      {room.lastMessage && room.lastMessage !== ""
+                        ? typeof room.lastMessage === "string"
+                          ? room.lastMessage
+                          : "[Can't check content]"
+                        : "Start a new conversation!"}
                     </Text>
                   </View>
                 </Pressable>
@@ -400,5 +488,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
     elevation: 2,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 100,
+  },
+  emptyIconWrapper: {
+    backgroundColor: "#F1F5F9",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 8,
+  },
+  emptySubTitle: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    paddingHorizontal: 40,
+    lineHeight: 20,
   },
 });

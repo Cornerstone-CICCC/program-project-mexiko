@@ -4,10 +4,10 @@ import { Message } from "../models/message.model";
 import { User } from "../models/user.model";
 
 export const chatService = {
-  async getInternalId(firebaseUid: string) {
-    const user = await User.findOne({ firebaseUid });
-    return user ? user._id : null;
-  },
+  // async getInternalId(firebaseUid: string) {
+  //   const user = await User.findOne({ firebaseUid });
+  //   return user ? user._id : null;
+  // },
 
   async getMyRooms(firebaseUid: string) {
     try {
@@ -24,27 +24,35 @@ export const chatService = {
       })
         .sort({ updatedAt: -1 })
         .lean();
+      //.populate("participants");
 
       const roomsWithDetails = await Promise.all(
         rooms.map(async (room) => {
           const internalIdStr = room.participants.filter((p) =>
             mongoose.Types.ObjectId.isValid(p),
           );
-
           let myDeletedAt = new Date(0);
           if (room.deletedAt) {
-            if (room.deletedAt instanceof Map) {
-              myDeletedAt =
-                room.deletedAt.get(firebaseUid) ||
-                room.deletedAt.get(internalIdStr as any) ||
-                new Date(0);
-            } else {
-              myDeletedAt =
-                (room.deletedAt as any)?.[firebaseUid] ||
-                (room.deletedAt as any)?.[internalIdStr as any] ||
-                new Date(0);
-            }
+            const rawDeletedAt =
+              room.deletedAt instanceof Map
+                ? room.deletedAt.get(firebaseUid) ||
+                  room.deletedAt.get(internalIdStr as any)
+                : (room.deletedAt as any)?.[firebaseUid] ||
+                  (room.deletedAt as any)?.[internalIdStr as any];
+
+            if (rawDeletedAt) myDeletedAt = new Date(rawDeletedAt);
           }
+
+          const latestMsg = await Message.findOne({
+            chatRoomId: room.roomId,
+            createdAt: { $gt: myDeletedAt },
+          }).sort({ createdAt: -1 });
+
+          const lastMessageToShow = latestMsg ? latestMsg.content : "";
+          const lastMessageSender = latestMsg ? latestMsg.senderId : null;
+          const lastMessageTime = latestMsg
+            ? latestMsg.createdAt
+            : room.createdAt;
 
           const validObjectIds = room.participants.filter((p: any) =>
             mongoose.Types.ObjectId.isValid(p),
@@ -57,8 +65,15 @@ export const chatService = {
                 { _id: { $in: validObjectIds } },
               ],
             },
-            "firebaseUid mbtiType fullName profileImage",
+            "firebaseUid mbtiType fullName profileImage lastLogin gender",
           ).lean();
+
+          const myDetail = participantDetails.find(
+            (p) => p.firebaseUid === firebaseUid,
+          );
+          const otherDetail = participantDetails.find(
+            (p) => p.firebaseUid !== firebaseUid,
+          );
 
           const unreadCount = await Message.countDocuments({
             chatRoomId: room.roomId,
@@ -70,14 +85,22 @@ export const chatService = {
           return {
             ...room,
             participants: participantDetails,
-            lastMessage: room.lastMessage,
+            otherParticipant: otherDetail || null,
+            me: myDetail,
+            lastMessage: lastMessageToShow,
+            lastMessageSenderId: lastMessageSender,
             unreadCount,
+            updatedAt: lastMessageTime || room.createdAt,
             currentUserId: firebaseUid,
           };
         }),
       );
 
-      return roomsWithDetails;
+      return roomsWithDetails.sort((a, b) => {
+        return (
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
     } catch (error) {
       console.error("getMyRooms Error:", error);
       throw error;
@@ -114,15 +137,24 @@ export const chatService = {
       mongoose.Types.ObjectId.isValid(p),
     );
 
-    const participantDetails = await User.find(
+    const rawParticipants = await User.find(
       {
         $or: [
           { firebaseUid: { $in: room.participants } },
           { _id: { $in: validObjectIds } },
         ],
       },
-      "firebaseUid mbtiType fullName profileImage",
+      "firebaseUid mbtiType fullName profileImage gender",
     ).lean();
+
+    const participantDetails = room.participants
+      .map((pId) => {
+        return rawParticipants.find(
+          (p) =>
+            p.firebaseUid === String(pId) || p._id.toString() === String(pId),
+        );
+      })
+      .filter((p) => p);
 
     const internalIdStr = internalId.toString();
     const myDeletedAt =
@@ -175,6 +207,12 @@ export const chatService = {
     content: string,
     messageType: string = "text",
   ) {
+    const room = await ChatRoom.findOne({ roomId });
+
+    if (room?.blockedBy && room.blockedBy.length > 0) {
+      throw new Error("Cannot send message in a blocked chat.");
+    }
+
     const newMessage = await Message.create({
       chatRoomId: roomId,
       senderId,
@@ -195,13 +233,33 @@ export const chatService = {
     return newMessage;
   },
 
-  async deleteRoom(roomId: string, userId: string) {
-    const room = await ChatRoom.findOneAndDelete({
-      roomId: roomId,
-      participants: { $in: [userId] },
-    });
-    if (room) await Message.deleteMany({ chatRoomId: roomId });
-    return room;
+  async deleteRoom(roomId: string, firebaseUid: string) {
+    try {
+      const user = await User.findOne({ firebaseUid });
+      const internalId = user ? user._id : null;
+
+      const room = await ChatRoom.findOneAndDelete({
+        roomId: String(roomId),
+        $or: [
+          { participants: firebaseUid },
+          { participants: internalId as any },
+        ],
+      });
+
+      if (!room) {
+        console.error(
+          `Room not found or access denied: RoomID: ${roomId}, UserID: ${firebaseUid}`,
+        );
+        throw new Error("Chat room not found or unauthorized");
+      }
+
+      await Message.deleteMany({ chatRoomId: String(roomId) });
+
+      return room;
+    } catch (error) {
+      console.error("deleteRoom Service Error:", error);
+      throw error;
+    }
   },
 
   async markMessagesAsRead(roomId: string, userId: string) {
@@ -238,5 +296,48 @@ export const chatService = {
       { $addToSet: { blockedBy: targetId } },
       { new: true },
     );
+  },
+
+  async toggleReveal(roomId: string, firebaseUid: string) {
+    const [room, user] = await Promise.all([
+      ChatRoom.findOne({ roomId }),
+      User.findOne({ firebaseUid }),
+    ]);
+
+    if (!room) throw new Error("Room not found");
+    if (!user) throw new Error("User not found");
+
+    const myFirebaseUid = String(firebaseUid).trim();
+    const myInternalId = String(user._id).trim();
+
+    const p0 = String(room.participants[0]).trim();
+    const p1 = String(room.participants[1]).trim();
+
+    const isUserA = p0 === myFirebaseUid || p0 === myInternalId;
+    const isUserB = p1 === myFirebaseUid || p1 === myInternalId;
+
+    if (!isUserA && !isUserB) {
+      throw new Error("Unauthorized: Participant not found in this room");
+    }
+
+    const updateField = isUserA ? "consent.userA" : "consent.userB";
+
+    if (room.consent[isUserA ? "userA" : "userB"]) return room;
+
+    let updatedRoom = await ChatRoom.findOneAndUpdate(
+      { roomId },
+      { $set: { [updateField]: true } },
+      { new: true },
+    );
+
+    if (updatedRoom && updatedRoom.consent.userA && updatedRoom.consent.userB) {
+      updatedRoom = await ChatRoom.findOneAndUpdate(
+        { roomId },
+        { $set: { isRevealed: true, status: "revealed" } },
+        { new: true },
+      );
+    }
+
+    return updatedRoom;
   },
 };

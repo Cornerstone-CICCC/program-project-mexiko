@@ -18,12 +18,16 @@ import * as ImagePicker from "expo-image-picker";
 import { auth } from "@/config/firebase";
 import { MBTI_DETAILS } from "@/utils/mbti";
 import * as Location from "expo-location";
+import Slider from "@react-native-community/slider";
 
 const Profile = () => {
   const [image, setImage] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState([]);
+  const [birthDate, setBirthDate] = useState("");
+
+  const editPath = user?.firebaseUid ? `/${user.firebaseUid}/edit` : "/edit";
 
   const getLocation = async () => {
     try {
@@ -102,11 +106,16 @@ const Profile = () => {
       console.log("response", response);
       if (response.ok) {
         setUser(data);
+        if (data.Interests) {
+          setSelectedInterests(data.Interests);
+        }
+
         if (data.profileImage) {
           console.log("data.profileImage", data.profileImage);
           setImage(data.profileImage);
-          setSelectedInterests(data.Interests);
         }
+        setSelectedInterests(data.Interests);
+        setBirthDate(data.birthDate);
 
         console.log("✅ User Info Loaded:", data);
       } else {
@@ -282,13 +291,44 @@ const Profile = () => {
             <Text className="text-2xl font-bold text-slate-900">
               Introduction
             </Text>
-            <Link href="/1/edit" asChild>
+
+            <Link href={editPath} asChild>
               <TouchableOpacity>
                 <Entypo name="pencil" size={24} color="#6366f1" />
               </TouchableOpacity>
             </Link>
           </View>
           <Text className="text-slate-600 leading-6 text-[16px]">{bio}</Text>
+        </View>
+
+        <View
+          style={[
+            styles.cardContainer,
+            { marginTop: 15, marginHorizontal: 20 },
+          ]}
+        >
+          <View className="flex-row justify-between items-center">
+            <Text className="text-2xl font-bold text-slate-900">Birthday</Text>
+            <Text className="text-slate-900 text-xl font-bold">
+              {user?.birthDate ? user.birthDate.split("T")[0] : "Not set"}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.cardContainer,
+            { marginTop: 15, marginHorizontal: 20 },
+          ]}
+        >
+          <View className="flex-row justify-between items-center">
+            <Text className="text-2xl font-bold text-slate-900">
+              Interested In
+            </Text>
+            <Text className="text-slate-900 text-xl font-bold">
+              {user?.preferredGender || "All"}
+            </Text>
+          </View>
         </View>
 
         {/* communication style & relationship values */}
@@ -401,7 +441,7 @@ const Profile = () => {
         >
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-2xl font-bold text-slate-900">Interests</Text>
-            <Link href="/1/edit" asChild>
+            <Link href={editPath} asChild>
               <TouchableOpacity>
                 <Entypo name="pencil" size={24} color="#6366f1" />
               </TouchableOpacity>
@@ -455,7 +495,7 @@ const Profile = () => {
             <Text className="text-2xl font-bold text-slate-900">
               Preferences
             </Text>
-            <Link href="/1/edit" asChild>
+            <Link href={editPath} asChild>
               <TouchableOpacity>
                 <Entypo name="pencil" size={24} color="#6366f1" />
               </TouchableOpacity>
@@ -464,12 +504,18 @@ const Profile = () => {
 
           <View className="flex-row justify-between items-center mb-5">
             <Text className="text-2xl font-bold text-slate-900">Age Range</Text>
-            <Text className="text-black-600 text-3l font-bold">24-32</Text>
+            <Text className="text-black-600 text-3l font-bold">
+              {user?.preferredAgeRange
+                ? `${user.preferredAgeRange.min} - ${user.preferredAgeRange.max}`
+                : "24-32"}
+            </Text>
           </View>
 
           <View className="flex-row justify-between items-center mb-5">
-            <Text className="text-2xl  text-slate-900">Distance</Text>
-            <Text className="text-black-600 text-3l font-bold">25 miles</Text>
+            <Text className="text-2xl font-bold text-slate-900">Distance</Text>
+            <Text className="text-black-600 text-3l font-bold">
+              {user?.preferredDistance} miles
+            </Text>
           </View>
         </View>
 
@@ -479,7 +525,7 @@ const Profile = () => {
               <Text className="text-white text-xl mr-2">
                 <Entypo name="pencil" size={24} color="white" />
               </Text>
-              <Link href="/1/edit" asChild>
+              <Link href={editPath} asChild>
                 <Text className="text-white text-xl font-bold">
                   Edit Profile
                 </Text>

@@ -11,9 +11,11 @@ export interface IChatRoom extends Document {
     userA: boolean;
     userB: boolean;
   };
+  isRevealed: boolean;
   expiresAt: Date;
   lastMessage?: string;
   deletedAt: Map<string, Date>;
+  blockedBy: string[];
 }
 
 const ChatRoomSchema = new Schema<IChatRoom>(
@@ -45,6 +47,7 @@ const ChatRoomSchema = new Schema<IChatRoom>(
       userA: { type: Boolean, default: false },
       userB: { type: Boolean, default: false },
     },
+    isRevealed: { type: Boolean, default: false },
     expiresAt: {
       type: Date,
       required: true,
@@ -54,6 +57,10 @@ const ChatRoomSchema = new Schema<IChatRoom>(
       type: Map,
       of: Date,
       default: new Map(),
+    },
+    blockedBy: {
+      type: [String],
+      default: [],
     },
   },
 
