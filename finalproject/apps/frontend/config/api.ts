@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
   USERS: `${API_BASE_URL}/users`,
   USER: (id: string) => `${API_BASE_URL}/users/${id}`,
   MATCHES: `${API_BASE_URL}/match`,
+  REPORTS: `${API_BASE_URL}/reports`,
+  MY_REPORTS: `${API_BASE_URL}/reports/me`,
 };
 
 export default API_BASE_URL;

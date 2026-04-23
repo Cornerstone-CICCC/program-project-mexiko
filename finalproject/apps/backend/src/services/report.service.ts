@@ -14,6 +14,14 @@ export const getReports = async (
     .sort({ createdAt: -1 });
 };
 
+export const getReportsByReporter = async (reporterId: string) => {
+  return await Report.find({
+    reporterId: new mongoose.Types.ObjectId(reporterId),
+  })
+    .populate("targetId", "fullName email isSuspended")
+    .sort({ createdAt: -1 });
+};
+
 export const createManyReports = async (
   reportItems: Partial<IReport>[],
   reporterId: string,
