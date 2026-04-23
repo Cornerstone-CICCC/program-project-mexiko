@@ -37,7 +37,7 @@ console.log("✅ Variables de entorno verificadas");
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
-cron.schedule("00 08 * * *", async () => {
+cron.schedule("10 00 * * *", async () => {
   // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {

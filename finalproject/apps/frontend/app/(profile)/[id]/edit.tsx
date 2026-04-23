@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
   Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { Stack, Link } from "expo-router";
@@ -15,6 +17,8 @@ import { Entypo } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import { auth } from "@/config/firebase";
+import DatePicker from "react-native-ui-datepicker";
+import dayjs from "dayjs";
 
 const profileEdit = () => {
   const [minAge, setMinAge] = useState(25);
@@ -22,6 +26,9 @@ const profileEdit = () => {
   const [distance, setDistance] = useState(25);
   const [image, setImage] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [preferredGender, setPreferredGender] = useState("All");
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState("");
 
   const [allInterests] = useState([
     "Reading",
@@ -38,13 +45,20 @@ const profileEdit = () => {
     "Gaming",
   ]);
 
-  const [selectedInterests, setSelectedInterests] = useState([
-    "Reading",
-    "Hiking",
-  ]);
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredResults, setFilteredResults] = useState<string[]>([]);
   const [bio, setBio] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+
+  const onDateChange = (params: any) => {
+    if (params.date) {
+      const selectedDate = dayjs(params.date).format("YYYY-MM-DD");
+      setBirthDate(selectedDate);
+
+      // setShowPicker(false);
+    }
+  };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -103,11 +117,23 @@ const profileEdit = () => {
       //setUser(response);
       //console.log("response", response);
       if (response.ok) {
+        console.log("data", data);
         setUser(data);
+        setGender(data.gender || "Other");
+        //setPreferredGender(data.preferredGender || "All");
+        if (data.preferredGender) {
+          setPreferredGender(data.preferredGender);
+        }
+        console.log("data.Interests", data.Interests);
+        if (data.Interests) {
+          setSelectedInterests(data.Interests);
+        }
+
+        setBirthDate(data.birthDate ? data.birthDate.split("T")[0] : "");
         if (data.profileImage) {
-          console.log("data.profileImage", data.profileImage);
+          //console.log("data.profileImage", data.profileImage);
           setImage(data.profileImage);
-          console.log("interests", data.Interests);
+          //console.log("interests", data.Interests);
           setSelectedInterests(data.Interests);
         }
         if (data.preferredAgeRange) {
@@ -146,6 +172,9 @@ const profileEdit = () => {
             preferredAgeRange: { min: minAge, max: maxAge },
             preferredDistance: distance,
             Interests: selectedInterests,
+            gender: gender,
+            birthDate: birthDate,
+            preferredGender: preferredGender,
           },
         }),
       });
@@ -154,6 +183,7 @@ const profileEdit = () => {
         const updatedData = await response.json();
         setUser(updatedData);
         console.log("✅ DB Update Success");
+        if (response.ok) Alert.alert("Success", "Saved your profile");
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
@@ -233,6 +263,26 @@ const profileEdit = () => {
             </TouchableOpacity>
           </View>
         </View>
+        <View style={styles.formContainer}>
+          <View
+            style={[
+              styles.cardContainer,
+              { marginTop: 20, marginHorizontal: 20 },
+            ]}
+          >
+            <Text style={styles.inputLabel}>Birth Date</Text>
+            <TextInput
+              style={styles.addInterestInput}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#94a3b8"
+              value={birthDate}
+              onChangeText={setBirthDate}
+            />
+            <Text style={{ fontSize: 12, color: "#94a3b8", mt: 5 }}>
+              Example: 1994-05-21
+            </Text>
+          </View>
+        </View>
 
         {/* About */}
         <View style={styles.formContainer}>
@@ -269,7 +319,7 @@ const profileEdit = () => {
           </View>
         </View>
 
-        {/* Selected List */}
+        {/* Selected List Section */}
         <View style={styles.formContainer}>
           <View
             style={[
@@ -278,6 +328,7 @@ const profileEdit = () => {
             ]}
           >
             <Text style={styles.sectionTitle}>Interests</Text>
+
             <View
               style={{
                 flexDirection: "row",
@@ -286,45 +337,95 @@ const profileEdit = () => {
                 marginBottom: 15,
               }}
             >
-              {selectedInterests && selectedInterests.length > 0 ? (
-                selectedInterests.map((item) => (
-                  <View key={item} style={styles.interestBadge}>
-                    <Text style={styles.interestText}>{item}</Text>
+              {selectedInterests.length > 0 ? (
+                selectedInterests.map((interest) => (
+                  <View key={interest} style={styles.interestBadge}>
+                    <Text style={styles.interestText}>{interest}</Text>
                     <TouchableOpacity
-                      style={{ marginLeft: 6 }}
                       onPress={() =>
                         setSelectedInterests(
-                          selectedInterests.filter((i) => i !== item),
+                          selectedInterests.filter((i) => i !== interest),
                         )
                       }
+                      style={{ marginLeft: 6 }}
                     >
-                      <Entypo
-                        name="cross"
-                        size={16}
-                        color="rgba(67, 56, 202, 0.6)"
-                      />
+                      <Entypo name="cross" size={16} color="#7C3AED" />
                     </TouchableOpacity>
                   </View>
                 ))
               ) : (
-                <Text style={{ color: "#94a3b8", marginLeft: 5 }}>
+                <Text style={{ color: "#94a3b8", marginBottom: 10 }}>
                   No interests selected
                 </Text>
               )}
             </View>
 
-            <View style={styles.addInterestContainer}>
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 15 }}>
               <TextInput
-                style={styles.addInterestInput}
-                placeholder="Search interests..."
+                style={[styles.addInterestInput, { flex: 1 }]}
+                placeholder="Type or search..."
                 placeholderTextColor="#94a3b8"
                 value={searchQuery}
                 onChangeText={handleSearch}
+                onSubmitEditing={() => {
+                  if (searchQuery.trim()) addInterest(searchQuery.trim());
+                }}
               />
+              <TouchableOpacity
+                onPress={() =>
+                  searchQuery.trim() && addInterest(searchQuery.trim())
+                }
+                style={{
+                  backgroundColor: "#7C3AED",
+                  paddingHorizontal: 15,
+                  borderRadius: 16,
+                  justifyContent: "center",
+                }}
+              >
+                <Entypo name="plus" size={24} color="white" />
+              </TouchableOpacity>
             </View>
 
+            <Text
+              style={{
+                fontSize: 14,
+                color: "#64748b",
+                marginBottom: 8,
+                fontWeight: "600",
+              }}
+            >
+              Suggestions
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingBottom: 5 }}
+            >
+              {allInterests
+                .filter((item) => !selectedInterests.includes(item))
+                .slice(0, 15)
+                .map((interest) => (
+                  <TouchableOpacity
+                    key={interest}
+                    onPress={() => addInterest(interest)}
+                    style={{
+                      backgroundColor: "#F1F5F9",
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 100,
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
+                    }}
+                  >
+                    <Text style={{ color: "#475569", fontSize: 14 }}>
+                      {interest}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
             {filteredResults.length > 0 && (
-              <View style={styles.dropdown}>
+              <View style={[styles.dropdown, { marginTop: 10 }]}>
                 {filteredResults.map((item) => (
                   <TouchableOpacity
                     key={item}
@@ -337,6 +438,43 @@ const profileEdit = () => {
                 ))}
               </View>
             )}
+          </View>
+        </View>
+
+        <View style={styles.formContainer}>
+          <View
+            style={[
+              styles.cardContainer,
+              { marginTop: 20, marginHorizontal: 20 },
+            ]}
+          >
+            <Text style={styles.sectionTitle}>Preferred Gender</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingRight: 20 }}
+            >
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 25 }}>
+                {["All", "Male", "Female", "Other"].map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => setPreferredGender(item)}
+                    style={[
+                      styles.miniBadge,
+                      preferredGender === item && styles.activeBadge,
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: preferredGender === item ? "white" : "#64748b",
+                      }}
+                    >
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
 
@@ -453,6 +591,41 @@ const profileEdit = () => {
           </View>
         </TouchableOpacity>
       </ScrollView>
+      <Modal visible={showPicker} transparent={true} animationType="slide">
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{ backgroundColor: "white", borderRadius: 20, padding: 20 }}
+          >
+            <DatePicker
+              mode="calendar"
+              date={birthDate ? dayjs(birthDate) : dayjs()}
+              onChange={onDateChange}
+              selectedItemColor="#7C3AED"
+            />
+            <TouchableOpacity
+              onPress={() => setShowPicker(false)}
+              style={{
+                backgroundColor: "#7C3AED",
+                padding: 15,
+                borderRadius: 12,
+                alignItems: "center",
+                marginTop: 15,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Confirm
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -583,5 +756,36 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     alignItems: "center",
     justifyContent: "center",
+  },
+  miniBadge: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 15,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    minWidth: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  activeBadge: {
+    backgroundColor: "#7C3AED",
+    borderColor: "#7C3AED",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  miniBadgeText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#64748b",
+  },
+
+  activeBadgeText: {
+    color: "#FFFFFF",
   },
 });

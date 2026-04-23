@@ -23,6 +23,11 @@ export const isAuthenticated = async (
   if (!userId) {
     return res.status(401).json({ error: "Unauthorized: No session found." });
   }
+  // User login time check
+  User.updateOne(
+    { firebaseUid: userId },
+    { $set: { lastLogin: new Date() } },
+  ).catch((err) => console.error("Failed to update lastLogin:", err));
 
   req.userId = userId;
   console.log("req.userId set to:", req.userId);

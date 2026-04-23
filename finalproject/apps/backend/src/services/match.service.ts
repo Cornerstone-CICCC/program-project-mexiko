@@ -32,7 +32,8 @@ export const getMatchingList = async (firebaseUid: string) => {
   const now = new Date();
 
   const activeMatches = matchFeed.matchedUsers
-    .filter((entry) => entry.expiresAt > now && entry.isOpened === false)
+    //.filter((entry) => entry.expiresAt > now && entry.isOpened === false)
+    .filter((entry) => entry.expiresAt > now)
     .map((entry) => {
       const targetUser = entry.targetId as unknown as {
         _id?: mongoose.Types.ObjectId;
@@ -107,7 +108,8 @@ export const createMatchRequest = async (
     {
       $push: {
         matchedUsers: {
-          targetId: new mongoose.Types.ObjectId(targetUserId),
+          //targetId: new mongoose.Types.ObjectId(targetUserId),
+          targetId: targetUserId,
           synergyScore,
           isOpened: true,
           recommendedAt: now,
@@ -179,16 +181,13 @@ export const processMatchInteraction = async (
 
   let room = await ChatRoom.findOne({
     participants: {
-      $all: [currentUser._id, new mongoose.Types.ObjectId(targetUserId)],
+      $all: [currentUser._id.toString(), targetUserId],
     },
   });
 
   if (!room) {
     room = await ChatRoom.create({
-      participants: [
-        currentUser._id,
-        new mongoose.Types.ObjectId(targetUserId),
-      ],
+      participants: [currentUser._id.toString(), targetUserId],
       matchId: matchFeed._id,
       expiresAt: new Date(Date.now() + CHATROOM_TTL_MS),
       status: "active",
@@ -221,6 +220,7 @@ export const generateDailyMatches = async () => {
 
       const activeEntries = currentEntries.filter(
         (entry) => entry.expiresAt > now && entry.isOpened === false,
+        //(entry) => entry.expiresAt > now,
       );
 
       if (activeEntries.length >= DAILY_MATCH_COUNT) {

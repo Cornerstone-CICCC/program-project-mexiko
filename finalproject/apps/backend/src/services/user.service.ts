@@ -77,6 +77,8 @@ export const updateUserInfo = async (idOrUid: string, updateData: any) => {
     "Interests",
     "mbtiTestchecked",
     "isSuspended",
+    "birthDate",
+    "preferredGender",
   ];
 
   console.log("id", id);

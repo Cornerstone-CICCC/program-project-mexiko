@@ -30,6 +30,8 @@ router.post("/", chatController.createRoom);
 router.post("/:roomId/clear", chatController.clearChat);
 router.post("/:roomId/block", chatController.blockUser);
 
+router.post("/:roomId/reveal", chatController.toggleReveal);
+
 router.post(
   "/:roomId/messages",
   upload.fields([

@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   Modal,
+  Alert,
   ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, Stack, Link } from "expo-router";
@@ -21,6 +22,7 @@ import axios from "axios";
 import { getSocket } from "../../../utils/socket";
 import * as FileSystem from "expo-file-system/legacy";
 import { calculateSynergy } from "@/utils/mbti";
+import { Ionicons } from "@expo/vector-icons";
 
 const SERVER_URL = "http://localhost:3500";
 
@@ -45,6 +47,12 @@ const ChatRoom = () => {
   const [inputText, setInputText] = useState("");
   const [myId, setMyId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+
+  const [timeLeft, setTimeLeft] = useState("");
+  const [myRevealRequest, setMyRevealRequest] = useState(false);
+  const [partnerRevealRequest, setPartnerRevealRequest] = useState(false);
+
+  const [isRevealed, setIsRevealed] = useState(false);
 
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -83,6 +91,28 @@ const ChatRoom = () => {
         messages: dbMessages = [],
         myId: currentUserId,
       } = response.data;
+
+      if (room && room.participants) {
+        setIsRevealed(room.isRevealed);
+
+        const myUid = String(currentUserId);
+
+        const myIndex = room.participants.findIndex((p: any) => {
+          const pId = typeof p === "object" ? p.firebaseUid || p._id : p;
+          return String(pId) === myUid;
+        });
+
+        if (myIndex !== -1) {
+          const isMeUserA = myIndex === 0;
+
+          setMyRevealRequest(
+            isMeUserA ? !!room.consent?.userA : !!room.consent?.userB,
+          );
+          setPartnerRevealRequest(
+            isMeUserA ? !!room.consent?.userB : !!room.consent?.userA,
+          );
+        }
+      }
 
       setMyId(currentUserId);
 
@@ -223,6 +253,98 @@ const ChatRoom = () => {
       </View>
     </Modal>
   );
+
+  // Timer
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      let targetTime = new Date();
+      targetTime.setHours(8, 0, 0, 0);
+
+      if (now >= targetTime) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+
+      const distance = targetTime.getTime() - now.getTime();
+
+      if (distance <= 0) {
+        return "00:00:00";
+      }
+
+      const h = Math.floor(distance / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    };
+
+    setTimeLeft(calculateTimeLeft());
+
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRevealProfile = () => {
+    if (myRevealRequest) return;
+
+    Alert.alert(
+      "Reveal Profile",
+      "Would you like to reveal your profile? Once both agree, full profiles will be shown.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reveal",
+          onPress: async () => {
+            try {
+              const response = await axios.post(`/chatroom/${roomId}/reveal`);
+
+              if (response.data.success) {
+                setMyRevealRequest(true);
+
+                if (response.data.data.isRevealed) {
+                  setIsRevealed(true);
+                }
+              }
+            } catch (error) {
+              console.error("Reveal Error:", error);
+              Alert.alert("Error", "Failed to process your request.");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  useEffect(() => {
+    if (!roomId || !myId) return;
+    const socket = getSocket();
+
+    // Listen for the other person's consent
+    socket.on("receive_reveal_request", ({ senderId }) => {
+      if (senderId !== myId) {
+        console.log("Partner has agreed to reveal profile.");
+      }
+    });
+
+    // Listen for the final reveal event
+    socket.on("profiles_revealed", ({ roomId: revealedRoomId }) => {
+      if (revealedRoomId === roomId) {
+        setIsRevealed(true);
+        Alert.alert(
+          "Matched!",
+          "Both agreed! Profiles are now fully revealed.",
+        );
+      }
+    });
+
+    return () => {
+      socket.off("receive_reveal_request");
+      socket.off("profiles_revealed");
+    };
+  }, [roomId, myId]);
 
   useEffect(() => {
     if (roomId) fetchMessages();
@@ -489,6 +611,14 @@ const ChatRoom = () => {
     );
   };
 
+  const handleShowInfo = () => {
+    Alert.alert(
+      "Profile Reveal Info",
+      "If both users agree to reveal within 24 hours of matching, you can view each other's full profiles and continue the conversation.",
+      [{ text: "Got it", style: "default" }],
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -510,12 +640,37 @@ const ChatRoom = () => {
                 </Text>
               </View>
             </View>
+            <Text className="text-slate-400 text-[10px] mt-1">
+              <Entypo name="back-in-time" size={12} color="#94a3b8" />{" "}
+              {timeLeft} left
+            </Text>
           </View>
           <Link href={`/room/${roomId}/settings`} asChild>
             <TouchableOpacity>
               <Entypo name="dots-three-vertical" size={20} color="#1e293b" />
             </TouchableOpacity>
           </Link>
+        </View>
+      </View>
+
+      <View style={styles.bannerContainer}>
+        <View className="flex-row items-center justify-center px-4 py-2">
+          <Ionicons
+            name="lock-closed"
+            size={14}
+            color="#6366F1"
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.bannerText}>
+            Mutual consent required for full profile reveal
+          </Text>
+          <TouchableOpacity className="ml-2" onPress={handleShowInfo}>
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color="#6366F1"
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -677,10 +832,38 @@ const ChatRoom = () => {
           );
         })}
       </ScrollView>
+      {/*
+      <View style={{ backgroundColor: "yellow", padding: 10 }}>
+        <Text>My: {myRevealRequest ? "TRUE" : "FALSE"}</Text>
+        <Text>Partner: {partnerRevealRequest ? "TRUE" : "FALSE"}</Text>
+        <Text>IsRevealed: {isRevealed ? "TRUE" : "FALSE"}</Text>
+      </View>
+      */}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
+        <View className="px-5 py-4 bg-white border-t border-gray-100">
+          {!isRevealed && (
+            <TouchableOpacity
+              onPress={handleRevealProfile}
+              activeOpacity={0.8}
+              style={{
+                backgroundColor: myRevealRequest ? "#94a3b8" : "#8B5CF6",
+              }}
+              className="py-3 rounded-2xl items-center mb-4 shadow-sm"
+            >
+              <Text className="text-white font-bold">
+                {myRevealRequest
+                  ? "Waiting for partner's response..."
+                  : partnerRevealRequest
+                    ? "Partner wants to reveal! Agree?"
+                    : "Ready to Reveal Profiles?"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View className="px-5 py-4 bg-white border-t border-gray-100 flex-row items-center">
           <TextInput
             value={inputText}
@@ -738,4 +921,18 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   timeText: { fontSize: 10, color: "#94a3b8", marginTop: 4 },
+  bannerContainer: {
+    backgroundColor: "#EEF2FF",
+    marginHorizontal: 20,
+    marginVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E7FF",
+  },
+  bannerText: {
+    color: "#4F46E5",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: -0.3,
+  },
 });
