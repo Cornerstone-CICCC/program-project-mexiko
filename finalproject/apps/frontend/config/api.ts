@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 // On Android, 'localhost' refers to the device itself, not the dev machine.
 // Use your machine's LAN IP for Android so the app can reach the backend.
 // For web, localhost works fine.
-const LAN_IP = "10.0.0.132";
+const LAN_IP = "10.0.2.2";
 
 const API_BASE_URL =
   Platform.OS === "android"

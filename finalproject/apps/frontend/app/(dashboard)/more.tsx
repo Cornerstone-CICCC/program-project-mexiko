@@ -1,6 +1,8 @@
+// app/(more)/index.tsx
 import { useState } from "react";
 import { router } from "expo-router";
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -8,17 +10,14 @@ import {
   View,
   ActivityIndicator,
   Platform,
-  Alert,
 } from "react-native";
+import SettingRow from "@/components/SettingRow";
+import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
 import Toast from "react-native-toast-message";
-
-import SettingRow from "@/components/SettingRow";
+import authService from "@/services/auth.services";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import DeleteAccountModal from "@/components/DeleteAccountModal";
-
-import { auth } from "../../config/firebase";
-import authService from "@/services/auth.services";
 import { API_ENDPOINTS } from "@/config/api";
 
 export default function MoreScreen() {
@@ -39,6 +38,7 @@ export default function MoreScreen() {
 
     try {
       await signOut(auth);
+      console.log("✅ Firebase logout successful");
 
       try {
         await fetch(API_ENDPOINTS.LOGOUT, {
@@ -60,7 +60,6 @@ export default function MoreScreen() {
       router.replace("/(auth)/login");
     } catch (error: any) {
       console.error("Logout error:", error);
-
       Toast.show({
         type: "error",
         text1: "Logout Failed",
@@ -104,7 +103,6 @@ export default function MoreScreen() {
       }, 1500);
     } catch (error: any) {
       console.error("Delete account error:", error);
-
       Toast.show({
         type: "error",
         text1: "Delete Failed",
@@ -149,21 +147,24 @@ export default function MoreScreen() {
               Alert.alert("Account ID", currentUser?.uid || "No ID available")
             }
           />
-          <Divider />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Email"
             icon="mail-outline"
             rightText={userEmail}
             onPress={() => Alert.alert("Email", userEmail)}
           />
-          <Divider />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Log Out"
             icon="log-out-outline"
             danger
             onPress={() => setModalVisible(true)}
           />
-          <Divider />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Delete Account"
             icon="trash-outline"
@@ -181,7 +182,8 @@ export default function MoreScreen() {
             switchValue={newMessageAlerts}
             onSwitchChange={setNewMessageAlerts}
           />
-          <Divider />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Do Not Disturb"
             icon="moon-outline"
@@ -189,7 +191,8 @@ export default function MoreScreen() {
             switchValue={doNotDisturb}
             onSwitchChange={setDoNotDisturb}
           />
-          <Divider />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Message Preview"
             icon="chatbubble-ellipses-outline"
@@ -258,82 +261,68 @@ function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
-function Divider() {
-  return <View style={styles.divider} />;
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F3F2F7",
   },
-
   content: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 22 : 20,
-    paddingBottom: 140,
+    paddingTop: Platform.OS === "ios" ? 18 : 20,
+    paddingBottom: 120,
   },
-
   title: {
     fontSize: 32,
     fontWeight: "800",
     color: "#111827",
-    marginTop: 8,
-    marginBottom: 40,
+    marginBottom: 28,
+    marginTop: 6,
   },
-
   sectionTitle: {
     fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.2,
+    fontWeight: "700",
+    letterSpacing: 0.4,
     color: "#6B7280",
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 6,
+    marginBottom: 12,
+    marginTop: 8,
+    paddingHorizontal: 2,
   },
-
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: "hidden",
+    marginBottom: 28,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    marginBottom: 32,
   },
-
   divider: {
     height: 1,
-    backgroundColor: "#ECEEF2",
+    backgroundColor: "#E5E7EB",
     marginLeft: 58,
   },
-
   footer: {
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 12,
     paddingBottom: 12,
     paddingHorizontal: 16,
   },
-
   footerTitle: {
     fontSize: 13,
     color: "#9CA3AF",
     marginBottom: 4,
   },
-
   footerSubtitle: {
     fontSize: 12,
     color: "#B0B7C3",
     textAlign: "center",
     lineHeight: 18,
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F3F2F7",
   },
-
   loadingText: {
     marginTop: 12,
     fontSize: 16,
