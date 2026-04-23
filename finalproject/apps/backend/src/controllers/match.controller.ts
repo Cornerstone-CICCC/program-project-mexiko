@@ -9,7 +9,22 @@ export const getMatches = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized." });
     }
 
-    const list = await matchService.getMatchingList(firebaseUid);
+    const gender =
+      typeof req.query.gender === "string" ? req.query.gender : undefined;
+
+    const maxDistance =
+      typeof req.query.maxDistance === "string"
+        ? Number(req.query.maxDistance)
+        : undefined;
+
+    const list = await matchService.getMatchingList(firebaseUid, {
+      gender,
+      maxDistance:
+        typeof maxDistance === "number" && !Number.isNaN(maxDistance)
+          ? maxDistance
+          : undefined,
+    });
+
     return res.status(200).json({ data: list });
   } catch (e: unknown) {
     const message =

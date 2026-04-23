@@ -3,6 +3,7 @@ import { router, useSegments, Stack } from "expo-router";
 import * as Linking from "expo-linking";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import "./global.css";
 import Toast from "react-native-toast-message";
@@ -19,20 +20,17 @@ function LayoutWithAuth() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!user && !inAuthGroup) {
-      // Redirect to login if unauthenticated and not already in auth group
-      router.replace('/(auth)/login');
+      router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
-      // Redirect away from login if authenticated
-      router.replace('/(mbti-check)');
+      router.replace("/(mbti-check)");
     }
   }, [user, loading, segments]);
 
-  // Don't render anything until we know the auth status to prevent flickering
   if (loading) {
-    return null; 
+    return null;
   }
 
   return (
@@ -49,6 +47,7 @@ function LayoutWithAuth() {
         <Stack.Screen name="(more)" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+
       <Toast />
       <StatusBar style="auto" />
     </>
@@ -93,8 +92,10 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <LayoutWithAuth />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <LayoutWithAuth />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

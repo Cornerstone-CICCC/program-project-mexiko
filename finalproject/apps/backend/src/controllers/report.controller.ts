@@ -31,13 +31,50 @@ export const getAllReports = async (req: Request, res: Response) => {
   }
 };
 
+export const getMyReports = async (req: Request, res: Response) => {
+  try {
+    const firebaseUid = req.userId;
+
+    if (!firebaseUid) {
+      return res
+        .status(401)
+        .json({ error: "Unauthorized: No user session found." });
+    }
+
+    const reporterUser = await User.findOne({ firebaseUid });
+
+    if (!reporterUser) {
+      return res
+        .status(404)
+        .json({ error: "Authenticated user not found in database." });
+    }
+
+    const reports = await reportService.getReportsByReporter(
+      reporterUser._id.toString()
+    );
+
+    res.status(200).json({
+      message: reports.length
+        ? "User reports fetched successfully."
+        : "No reports found for this user.",
+      reports,
+    });
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : "Failed to fetch user reports.";
+    res.status(500).json({ error: message });
+  }
+};
+
 export const createReports = async (req: Request, res: Response) => {
   try {
     const { reportItems } = req.body;
     const firebaseUid = req.userId;
 
     if (!firebaseUid) {
-      return res.status(401).json({ error: "Unauthorized: No user session found." });
+      return res
+        .status(401)
+        .json({ error: "Unauthorized: No user session found." });
     }
 
     if (!Array.isArray(reportItems) || reportItems.length === 0) {
@@ -47,12 +84,14 @@ export const createReports = async (req: Request, res: Response) => {
     const reporterUser = await User.findOne({ firebaseUid });
 
     if (!reporterUser) {
-      return res.status(404).json({ error: "Authenticated user not found in database." });
+      return res
+        .status(404)
+        .json({ error: "Authenticated user not found in database." });
     }
 
     const newReports = await reportService.createManyReports(
       reportItems,
-      reporterUser._id.toString(),
+      reporterUser._id.toString()
     );
 
     res.status(201).json({

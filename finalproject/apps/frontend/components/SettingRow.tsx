@@ -2,10 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from "react-native";
+import CustomToggle from "@/components/CustomToggle";
 
 type SettingRowProps = {
   label: string;
@@ -36,16 +36,25 @@ export default function SettingRow({
       onPress={isClickable ? onPress : undefined}
       style={({ pressed }) => [
         styles.row,
-        hasSubtitle ? styles.rowWithSubtitle : styles.rowSingleLine,
+        hasSwitch
+          ? styles.rowWithToggle
+          : hasSubtitle
+          ? styles.rowWithSubtitle
+          : styles.rowSingleLine,
         pressed && isClickable && styles.pressed,
       ]}
     >
-      <View style={styles.left}>
+      <View
+        style={[
+          styles.left,
+          hasSwitch && styles.leftWithToggle,
+        ]}
+      >
         <View style={styles.iconWrapper}>
           <Ionicons
             name={icon}
             size={22}
-            color={danger ? "#FF453A" : "#7C8395"}
+            color={danger ? "#FF453A" : "#8A94A6"}
           />
         </View>
 
@@ -67,7 +76,7 @@ export default function SettingRow({
 
       {hasSwitch && (
         <View style={styles.switchWrapper}>
-          <Switch
+          <CustomToggle
             value={switchValue}
             onValueChange={onSwitchChange}
           />
@@ -79,23 +88,27 @@ export default function SettingRow({
 
 const styles = StyleSheet.create({
   row: {
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingHorizontal: 18,
     backgroundColor: "#FFFFFF",
   },
 
   rowSingleLine: {
-    minHeight: 68,
+    minHeight: 86,
   },
 
   rowWithSubtitle: {
-    minHeight: 96,
+    minHeight: 98,
+  },
+
+  rowWithToggle: {
+    minHeight: 86,
   },
 
   pressed: {
-    opacity: 0.55,
+    opacity: 0.6,
   },
 
   left: {
@@ -105,23 +118,27 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 
+  leftWithToggle: {
+    paddingRight: 84, // reserva espacio para el toggle
+  },
+
   iconWrapper: {
-    width: 30,
+    width: 32,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
 
   textContainer: {
     flex: 1,
     justifyContent: "center",
     minWidth: 0,
-    paddingVertical: 10,
+    paddingVertical: 14,
   },
 
   label: {
     fontSize: 17,
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#111827",
   },
 
@@ -136,9 +153,11 @@ const styles = StyleSheet.create({
   },
 
   switchWrapper: {
-    marginLeft: 12,
-    width: 56,
-    alignItems: "flex-end",
+    position: "absolute",
+    right: 18,
+    top: 0,
+    bottom: 0,
     justifyContent: "center",
+    alignItems: "flex-end",
   },
 });

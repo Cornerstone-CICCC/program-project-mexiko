@@ -8,6 +8,7 @@ export type MatchApiItem = {
   isOpened: boolean;
   recommendedAt: string;
   expiresAt: string;
+  distanceKm?: number;
   targetUser: {
     email?: string | null;
     fullName?: {
@@ -17,6 +18,7 @@ export type MatchApiItem = {
     mbtiType?: string | null;
     images?: string[];
     bio?: string | null;
+    gender?: string | null;
   };
 };
 
@@ -33,19 +35,17 @@ export type MatchUiItem = {
   isOpened: boolean;
   recommendedAt: string;
   expiresAt: string;
+  distanceKm?: number;
+  gender?: string;
+};
+
+export type MatchFilters = {
+  gender?: "Male" | "Female" | "Other" | "All";
+  maxDistance?: number;
 };
 
 type GetMatchesResponse = {
   data: MatchApiItem[];
-};
-
-const fallbackTagsByMbti: Record<string, string[]> = {
-  ENFP: ["Creative", "Enthusiastic", "Spontaneous"],
-  ENTP: ["Innovative", "Curious", "Quick-witted"],
-  INFP: ["Idealistic", "Empathetic", "Authentic"],
-  INTJ: ["Strategic", "Independent", "Analytical"],
-  ENFJ: ["Charismatic", "Warm", "Inspiring"],
-  ISTP: ["Practical", "Calm", "Independent"],
 };
 
 const getFullName = (
@@ -56,7 +56,6 @@ const getFullName = (
   return `${first} ${last}`.trim() || "Unknown User";
 };
 
-//const mapMatchToUi = (item: MatchApiItem): MatchUiItem => {
 const mapMatchToUi = (item: MatchApiItem, myMbti: string): MatchUiItem => {
   const targetMbti = item.targetUser?.mbtiType || "N/A";
   const mbti = item.targetUser?.mbtiType || "N/A";
@@ -70,24 +69,37 @@ const mapMatchToUi = (item: MatchApiItem, myMbti: string): MatchUiItem => {
     name: getFullName(item.targetUser?.fullName),
     email: item.targetUser?.email ?? "No email",
     mbti,
-    //score: Math.round(item.synergyScore),
     score: calculateSynergy(myMbti, targetMbti),
-    // tags: fallbackTagsByMbti[mbti] ?? [
-    //   "Compatible",
-    //   "Interesting",
-    //   "Potential",
-    // ],
-    tags: tags,
+    tags,
     bio: item.targetUser?.bio ?? "",
     isOpened: item.isOpened,
     recommendedAt: item.recommendedAt,
     expiresAt: item.expiresAt,
+    distanceKm: item.distanceKm,
+    gender: item.targetUser?.gender ?? undefined,
   };
 };
 
-//export async function getMatches(): Promise<MatchUiItem[]> {
-export async function getMatches(myMbti: string): Promise<MatchUiItem[]> {
-  const response = await fetch(API_ENDPOINTS.MATCHES, {
+export async function getMatches(
+  myMbti: string,
+  filters?: MatchFilters,
+): Promise<MatchUiItem[]> {
+  const params = new URLSearchParams();
+
+  if (filters?.gender && filters.gender !== "All") {
+    params.append("gender", filters.gender);
+  }
+
+  if (typeof filters?.maxDistance === "number") {
+    params.append("maxDistance", String(filters.maxDistance));
+  }
+
+  const endpoint =
+    params.toString().length > 0
+      ? API_ENDPOINTS.MATCHES_WITH_FILTERS(params)
+      : API_ENDPOINTS.MATCHES;
+
+  const response = await fetch(endpoint, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -107,11 +119,7 @@ export async function getMatches(myMbti: string): Promise<MatchUiItem[]> {
     throw new Error("Invalid response from server");
   }
 
-  //return data.data.map(mapMatchToUi);
-
   const mappedData = data.data.map((item) => mapMatchToUi(item, myMbti));
-
-  //return data.data.map((item) => mapMatchToUi(item, myMbti));
   return mappedData.sort((a, b) => b.score - a.score);
 }
 

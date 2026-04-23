@@ -1,9 +1,7 @@
-// app/(more)/index.tsx
 import { useState } from "react";
 import { router } from "expo-router";
 import {
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +9,8 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import SettingRow from "@/components/SettingRow";
 import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
@@ -28,6 +28,9 @@ export default function MoreScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const currentUser = auth.currentUser;
   const userEmail = currentUser?.email || "No email";
@@ -117,7 +120,7 @@ export default function MoreScreen() {
 
   if (isLoggingOut || isDeleting) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6A11CB" />
           <Text style={styles.loadingText}>
@@ -129,16 +132,22 @@ export default function MoreScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Platform.OS === "ios" ? 12 : 18,
+            paddingBottom: tabBarHeight + insets.bottom + 28,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
         <Text style={styles.title}>More</Text>
 
         <SectionTitle title="Account" />
-        <View style={styles.section}>
+        <View style={styles.card}>
           <SettingRow
             label="ID"
             icon="card-outline"
@@ -147,21 +156,24 @@ export default function MoreScreen() {
               Alert.alert("Account ID", currentUser?.uid || "No ID available")
             }
           />
-          <View style={styles.rowGap} />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Email"
             icon="mail-outline"
             rightText={userEmail}
             onPress={() => Alert.alert("Email", userEmail)}
           />
-          <View style={styles.rowGap} />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Log Out"
             icon="log-out-outline"
             danger
             onPress={() => setModalVisible(true)}
           />
-          <View style={styles.rowGap} />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Delete Account"
             icon="trash-outline"
@@ -171,7 +183,7 @@ export default function MoreScreen() {
         </View>
 
         <SectionTitle title="Notifications" />
-        <View style={styles.section}>
+        <View style={styles.card}>
           <SettingRow
             label="New Message Alerts"
             icon="notifications-outline"
@@ -179,7 +191,8 @@ export default function MoreScreen() {
             switchValue={newMessageAlerts}
             onSwitchChange={setNewMessageAlerts}
           />
-          <View style={styles.rowGap} />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Do Not Disturb"
             icon="moon-outline"
@@ -187,7 +200,8 @@ export default function MoreScreen() {
             switchValue={doNotDisturb}
             onSwitchChange={setDoNotDisturb}
           />
-          <View style={styles.rowGap} />
+          <View style={styles.divider} />
+
           <SettingRow
             label="Message Preview"
             icon="chatbubble-ellipses-outline"
@@ -198,7 +212,7 @@ export default function MoreScreen() {
         </View>
 
         <SectionTitle title="Privacy" />
-        <View style={styles.section}>
+        <View style={styles.card}>
           <SettingRow
             label="Privacy Settings"
             icon="shield-outline"
@@ -207,7 +221,7 @@ export default function MoreScreen() {
         </View>
 
         <SectionTitle title="About" />
-        <View style={styles.section}>
+        <View style={styles.card}>
           <SettingRow
             label="About MindMatch"
             icon="information-circle-outline"
@@ -217,7 +231,7 @@ export default function MoreScreen() {
         </View>
 
         <SectionTitle title="Help" />
-        <View style={styles.section}>
+        <View style={styles.card}>
           <SettingRow
             label="Help Center"
             icon="help-circle-outline"
@@ -263,8 +277,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 18 : 20,
-    paddingBottom: 120,
   },
   title: {
     fontSize: 32,
@@ -282,11 +294,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 2,
   },
-  section: {
-    marginBottom: 24,
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    overflow: "hidden",
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
-  rowGap: {
-    height: 10,
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginLeft: 64,
   },
   footer: {
     alignItems: "center",
