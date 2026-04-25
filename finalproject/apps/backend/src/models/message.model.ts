@@ -1,24 +1,25 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IMessage extends Document {
-  chatRoomId: mongoose.Types.ObjectId;
-  senderId: mongoose.Types.ObjectId;
+  chatRoomId: string;
+  senderId: string;
   content: string;
-  messageType: "text" | "image" | "voice";
+  messageType: "text" | "image" | "voice" | "video";
   isRead: boolean;
+  isDelivered: boolean;
   createdAt: Date;
 }
 
 const MessageSchema = new Schema<IMessage>(
   {
     chatRoomId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: "ChatRoom",
       required: true,
       index: true,
     },
     senderId: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: "User",
       required: true,
     },
@@ -28,10 +29,14 @@ const MessageSchema = new Schema<IMessage>(
     },
     messageType: {
       type: String,
-      enum: ["text", "image", "voice"],
+      enum: ["text", "image", "voice", "video"],
       default: "text",
     },
     isRead: {
+      type: Boolean,
+      default: false,
+    },
+    isDelivered: {
       type: Boolean,
       default: false,
     },

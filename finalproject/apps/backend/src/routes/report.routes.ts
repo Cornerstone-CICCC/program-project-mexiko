@@ -7,6 +7,7 @@ const router = Router();
 router.use(isAuthenticated);
 
 router.get("/", reportController.getAllReports);
+router.get("/me", reportController.getMyReports);
 router.post("/", reportController.createReports);
 router.get("/:id", reportController.getReportById);
 router.put("/:id", reportController.updateReport);

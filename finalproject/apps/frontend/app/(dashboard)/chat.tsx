@@ -1,0 +1,580 @@
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  ScrollView,
+  Pressable,
+  Alert,
+} from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useFocusEffect } from "expo-router";
+import axios from "axios";
+import { ActivityIndicator } from "react-native-paper";
+import { getSocket } from "../utils/socket";
+import { calculateSynergy } from "@/utils/mbti";
+import { Ionicons } from "@expo/vector-icons";
+
+// 1. Axios Configuration
+axios.defaults.baseURL = "http://localhost:3500";
+axios.defaults.withCredentials = true;
+
+interface Participant {
+  firebaseUid: string;
+  mbtiType: string;
+  lastLogin?: string;
+  gender?: "Male" | "Female" | "Other";
+}
+interface Room {
+  _id: string;
+  roomId: string;
+  expiresAt: string;
+  lastMessage?: string;
+  lastMessageIsRead?: boolean;
+  lastMessageSenderId?: string;
+  unreadCount?: number;
+  updatedAt: string;
+  participants: Participant[];
+  isRevealed?: boolean;
+  status?: string;
+}
+
+const chat = () => {
+  const router = useRouter();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showRoom1, setShowRoom1] = useState(true);
+  const [targetInfo, setTargetInfo] = useState<{
+    mbti: string;
+    score: number;
+  } | null>(null);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const getRemainingTime = (lastActiveAt: string) => {
+    if (!lastActiveAt) return "OFF";
+
+    const lastActive = new Date(lastActiveAt).getTime();
+    if (isNaN(lastActive)) return "OFF";
+
+    const now = new Date().getTime();
+    const diff = now - lastActive;
+
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+
+    if (seconds < 60) return "ON";
+
+    if (minutes < 60) return `${minutes}m`;
+    if (Math.floor(minutes / 60) < 24) return `${Math.floor(minutes / 60)}h`;
+    return `${Math.floor(minutes / 1440)}d`;
+  };
+
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/chatroom");
+      console.log("chat room response", response);
+      if (response.data.currentUserId) {
+        setCurrentUserId(response.data.currentUserId);
+      }
+
+      if (response.data && response.data.data) {
+        setRooms(response.data.data);
+      }
+    } catch (error) {
+      console.error("Fetch rooms error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("fetch room");
+      fetchRooms();
+    }, []),
+  );
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const socket = getSocket(currentUserId);
+
+    socket.on("update_chat_list", (data) => {
+      console.log("Socket Data Received:", data);
+
+      setRooms((prevRooms) => {
+        const roomIndex = prevRooms.findIndex((r) => r.roomId === data.roomId);
+
+        if (roomIndex === -1) {
+          fetchRooms();
+          return prevRooms;
+        }
+
+        const updatedRooms = [...prevRooms];
+        const targetRoom = { ...updatedRooms[roomIndex] };
+
+        const isNewMessageFromOther =
+          String(data.senderId) !== String(currentUserId);
+        const increment = data.incrementUnread === true;
+
+        updatedRooms[roomIndex] = {
+          ...targetRoom,
+          lastMessage: data.lastMessage,
+          lastMessageIsRead: data.isRead,
+          lastMessageSenderId: data.senderId,
+
+          unreadCount: increment
+            ? (targetRoom.unreadCount || 0) + 1
+            : targetRoom.unreadCount || 0,
+
+          updatedAt: data.updatedAt,
+        };
+
+        return [...updatedRooms].sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
+      });
+    });
+
+    socket.on("messages_read", ({ roomId, userId }) => {
+      if (userId !== currentUserId) {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.roomId === roomId ? { ...r, lastMessageIsRead: true } : r,
+          ),
+        );
+      } else {
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.roomId === roomId
+              ? { ...r, unreadCount: 0, lastMessageIsRead: true }
+              : r,
+          ),
+        );
+      }
+    });
+
+    socket.on(
+      "user_status_changed",
+      (data: { userId: string; status: string; lastLogin: string }) => {
+        console.log("📡 Status Update Received:", data);
+
+        setRooms((prevRooms) => {
+          return prevRooms.map((room) => {
+            const other = (room as any).otherParticipant;
+
+            if (other && String(other.firebaseUid) === String(data.userId)) {
+              return {
+                ...room,
+                otherParticipant: {
+                  ...other,
+                  isOnline: data.status === "online",
+                  lastLogin: data.lastLogin,
+                },
+              };
+            }
+            return room;
+          });
+        });
+      },
+    );
+
+    return () => {
+      socket.off("update_chat_list");
+      socket.off("messages_read");
+      socket.off("user_status_changed");
+    };
+  }, [currentUserId]);
+
+  // temporary code
+  const createTestChatRoom = async () => {
+    try {
+      const testUserObjectId = "69bc41808fc000fbfa084c40";
+      const mockMatchId = "qxLtr5RqApbDDBvr5OTifLA70P33";
+
+      const response = await axios.post("/chatroom", {
+        targetId: testUserObjectId,
+        matchId: mockMatchId,
+      });
+      console.log("createTestChatRoom response", response);
+      if (response.data) {
+        Alert.alert("Success", "Test chat room has been created.");
+        fetchRooms();
+      }
+    } catch (error) {
+      console.error("Creation error:", error.response?.data || error.message);
+      Alert.alert("Error", "Failed to create room. Check server logs.");
+    }
+  };
+
+  const createTripleTestRooms = async () => {
+    try {
+      const myId = "CFYJpRsHtafu8TKEmIxCjeygTSC2"; // Reference Account (Me)
+      const targetIds = [
+        "uCgN2uEfq1ZgvTAYqQ60iyVxK4u1",
+        "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
+        "qxLtr5RqApbDDBvr5OTifLA70P33",
+      ];
+
+      for (const targetId of targetIds) {
+        const response = await axios.post("/chatroom", {
+          targetId: targetId, // Recipient
+          matchId: myId, // Requester (Me)
+        });
+        console.log(
+          `Chat room created successfully with: ${targetId}`,
+          response.data,
+        );
+      }
+
+      Alert.alert("Success", "Three test chat rooms have been created.");
+      fetchRooms(); // Refresh the chat list
+    } catch (error) {
+      console.error("Creation Error:", error.response?.data || error.message);
+      Alert.alert(
+        "Error",
+        "Failed to create chat rooms. Please check the console for details.",
+      );
+    }
+  };
+
+  const deleteChatRoom = async (id: string) => {
+    try {
+      await axios.delete(`/chatroom/${id}`);
+      fetchRooms();
+    } catch (error) {
+      console.error("Delete error:", error);
+      Alert.alert("Error", "Could not delete the room.");
+    }
+  };
+
+  const handleLeaveChat = (id: string, isMock: boolean = false) => {
+    Alert.alert(
+      "Leave Chat",
+      "Are you sure you want to leave this chat? All messages will be deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => (isMock ? setShowRoom1(false) : deleteChatRoom(id)),
+        },
+      ],
+    );
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        <View className="p-6">
+          <View className="mb-8 flex-row justify-between items-center">
+            <View>
+              <Text className="text-2xl font-bold text-slate-800">Chats</Text>
+              <Text className="text-slate-500">Your active conversations</Text>
+            </View>
+            <Pressable
+              onPress={createTripleTestRooms}
+              className="bg-indigo-100 px-3 py-2 rounded-lg"
+            >
+              <Text className="text-indigo-600 font-bold">Test Create</Text>
+            </Pressable>
+          </View>
+
+          {/* --- [Mock Room 1] --- */}
+          {/*showRoom1 && (
+            <Pressable
+              onPress={() => router.push("/(chat)/room/1")}
+              onLongPress={() => handleLeaveChat("1", true)}
+              className="flex-row items-center mb-6"
+              style={styles.cardContainer}
+            >
+              <View className="relative w-16 h-16">
+                <Image
+                  source={require("@/assets/images/man-profile-gray.png")}
+                  style={styles.profileImg}
+                />
+                <View style={styles.timeBadge}>
+                  <Text className="text-white text-[8px] mr-1">🕒</Text>
+                  <Text className="text-white text-[10px] font-bold">18h</Text>
+                </View>
+              </View>
+              <View className="flex-1 ml-4 justify-center">
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-xl font-bold text-slate-800 mr-2">
+                    ENFP
+                  </Text>
+                  <View className="bg-green-100 px-2 py-0.5 rounded-full">
+                    <Text className="text-green-600 text-[10px] font-bold">
+                      94%
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-slate-600 text-sm">
+                  Exactly! So what are you...
+                </Text>
+              </View>
+            </Pressable>
+          )*/}
+
+          {/* --- [Real DB Rooms] --- */}
+          {loading ? (
+            <ActivityIndicator size="small" color="#4F46E5" />
+          ) : rooms.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconWrapper}>
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={80}
+                  color="#CBD5E1"
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No active chats yet</Text>
+              <Text style={styles.emptySubTitle}>
+                Start matching with people to begin a new conversation!
+              </Text>
+              <Pressable
+                onPress={() => router.push("/(dashboard)/")}
+                className="bg-indigo-500 px-6 py-3 rounded-2xl mt-6 shadow-sm shadow-indigo-300"
+              >
+                <Text className="text-white font-bold text-lg">
+                  Find Matches
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            //rooms.map((room) => {
+            // [...rooms]
+            //   .sort(
+            //     (a, b) =>
+            //       new Date(b.updatedAt).getTime() -
+            //       new Date(a.updatedAt).getTime(),
+            //   )
+            rooms.map((room) => {
+              if (!room.participants || !Array.isArray(room.participants))
+                return null;
+
+              const other = (room as any).otherParticipant;
+              const me = (room as any).me;
+              console.log("other:::", other);
+
+              if (!other) return null;
+
+              //const isRevealed = other.isRevealed;
+              //const isRevealed = (room as any).isRevealed;
+              const isRevealed = room.isRevealed || false;
+              console.log("isRevealed::", isRevealed);
+
+              const otherParticipant = room.participants.find(
+                (p) => String(p.firebaseUid) !== String(currentUserId),
+              );
+
+              const getProfileImage = () => {
+                if (isRevealed && other.profileImage) {
+                  const imageUrl = other.profileImage.startsWith("http")
+                    ? other.profileImage
+                    : `${axios.defaults.baseURL}/uploads/${other.profileImage}`;
+                  return { uri: imageUrl };
+                }
+                return other.gender === "Female"
+                  ? require("@/assets/images/girl-profile.png")
+                  : require("@/assets/images/man-profile-gray.png");
+              };
+
+              // const displayTime = otherParticipant?.lastLogin
+              //   ? getRemainingTime(otherParticipant.lastLogin)
+              //   : getRemainingTime(room.updatedAt);
+              const displayTime = other.lastLogin
+                ? getRemainingTime(other.lastLogin)
+                : "OFF";
+              const isOnline = other.isOnline === true;
+              console.log("isOnline", isOnline);
+              console.log(
+                `Room: ${room.roomId}, LastLogin: ${other.lastLogin}, Result: ${displayTime}`,
+              );
+
+              const displayName = isRevealed
+                ? `${other.fullName.first} ${other.fullName.last || ""} (${other.mbtiType})`
+                : `${other.fullName.first} ${other.fullName.last || ""} (${other.mbtiType})`; // temporary
+              //: other.mbtiType;
+
+              const targetMbti =
+                otherParticipant?.mbtiType ||
+                (otherParticipant as any)?.mbti ||
+                "Unknown";
+
+              const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
+
+              console.log("console.log(room.participants)", room.participants);
+
+              const synergyScore = calculateSynergy(myMbti, other.mbtiType);
+              console.log("other", other);
+              return (
+                <Pressable
+                  key={room._id}
+                  onPress={() => router.push(`/(chat)/room/${room.roomId}`)}
+                  onLongPress={() => handleLeaveChat(room.roomId)}
+                  className="flex-row items-center mb-6"
+                  style={styles.cardContainer}
+                >
+                  <View className="relative w-16 h-16">
+                    <View className="w-16 h-16 bg-slate-200 rounded-full overflow-hidden">
+                      <Image
+                        source={getProfileImage(other)}
+                        style={styles.profileImg}
+                      />
+                    </View>
+                    {isOnline ? (
+                      <View
+                        style={{
+                          position: "absolute",
+                          bottom: 2,
+                          right: 2,
+                          width: 14,
+                          height: 14,
+                          borderRadius: 7,
+                          backgroundColor: "#22C55E",
+                          borderWidth: 2,
+                          borderColor: "white",
+                        }}
+                      />
+                    ) : (
+                      <View style={styles.timeBadge}>
+                        <Text
+                          style={{
+                            color: "white",
+                            fontSize: 10,
+                            fontWeight: "800",
+                          }}
+                        >
+                          {displayTime}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View className="flex-1 ml-4 justify-center">
+                    <View className="flex-row items-center justify-between mb-1">
+                      <View className="flex-row items-center">
+                        <Text className="text-xl font-bold text-slate-800 mr-2">
+                          {displayName}
+                        </Text>
+                        {/*
+                        <Text className="text-xl font-bold text-slate-800 mr-2">
+                          {other.mbtiType}
+                        </Text>
+                        */}
+                        <View className="bg-green-100 px-2 py-0.5 rounded-full">
+                          <Text className="text-green-600 text-[10px] font-bold">
+                            {synergyScore}%
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-center">
+                        {(room.unreadCount ?? 0) > 0 && (
+                          <View className="bg-indigo-500 px-1.5 py-0.5 rounded-full min-w-[18px] items-center justify-center">
+                            <Text className="text-white text-[10px] font-bold">
+                              {room.unreadCount}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    <Text
+                      className={`${!room.lastMessageIsRead && room.lastMessageSenderId !== currentUserId ? "font-bold text-slate-900" : "text-slate-600"} text-sm`}
+                      numberOfLines={1}
+                    >
+                      {/*room.lastMessage || "Start a new conversation!"*/}
+                      {room.lastMessage && room.lastMessage !== ""
+                        ? typeof room.lastMessage === "string"
+                          ? room.lastMessage
+                          : "[Can't check content]"
+                        : "Start a new conversation!"}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+export default chat;
+const styles = StyleSheet.create({
+  cardContainer: {
+    borderRadius: 24,
+    backgroundColor: "white",
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  profileImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 100,
+  },
+  timeBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#6366F1",
+    minWidth: 32,
+    height: 20,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 100,
+  },
+  emptyIconWrapper: {
+    backgroundColor: "#F1F5F9",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 8,
+  },
+  emptySubTitle: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    paddingHorizontal: 40,
+    lineHeight: 20,
+  },
+});
