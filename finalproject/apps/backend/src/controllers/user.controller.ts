@@ -21,6 +21,14 @@ export const login = async (req: Request, res: Response) => {
     // Search for user by Firebase UID first (for users created after Firebase integration)
     let user = await userService.findUser(decodedToken.uid);
 
+    // lastlogin check
+    if (user) {
+      await User.updateOne(
+        { firebaseUid: decodedToken.uid },
+        { $set: { lastLogin: new Date() } },
+      );
+    }
+
     // If not found by UID, try email (for users created before Firebase integration)
     if (!user && email) {
       console.log("⚠️ Not found by UID, searching by email...");
@@ -160,7 +168,7 @@ export const signup = async (req: Request, res: Response) => {
       firebaseUid: decodedToken.uid,
       email: email,
       fullName: userInfo.fullName || {
-        first: userInfo.name || "Usuario",
+        first: userInfo.name || "User",
         last: "",
       },
     });
@@ -202,15 +210,75 @@ export const getUser = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateUser = async (req: Request, res: Response) => {
+//   try {
+//     const id = req.params.id as string;
+//     //const updated = await userService.updateUserInfo(id, req.body.userInfo);
+
+//     let userInfoData = req.body.userInfo;
+//     if (typeof userInfoData === "string") {
+//       try {
+//         userInfoData = JSON.parse(userInfoData);
+//       } catch (e) {
+//         console.error("JSON Parse Error:", e);
+//       }
+//     }
+
+//     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+//     if (files?.profileImage?.[0]) {
+//       userInfoData.profileImage = files.profileImage[0].filename;
+//     }
+
+//     const updated = await userService.updateUserInfo(id, userInfoData);
+
+//     if (!updated) return res.status(404).json({ error: "User not found." });
+
+//     res.status(201).json(updated);
+//   } catch (e: unknown) {
+//     const message =
+//       e instanceof Error ? e.message : "Failed to update user information.";
+//     res.status(500).json({ error: message });
+//   }
+// };
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const updated = await userService.updateUserInfo(id, req.body.userInfo);
-    res.status(201).json(updated);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error ? e.message : "Failed to update user information.";
-    res.status(500).json({ error: message });
+    let updateData: any = {};
+
+    if (req.body.userInfo) {
+      try {
+        updateData =
+          typeof req.body.userInfo === "string"
+            ? JSON.parse(req.body.userInfo)
+            : req.body.userInfo;
+      } catch (e) {
+        console.error("❌ JSON 파싱 실패:", e);
+        updateData = req.body;
+      }
+    } else {
+      updateData = req.body;
+    }
+
+    console.log("📸 req.file 상태:", req.file);
+
+    if (req.file) {
+      updateData.profileImage = req.file.filename;
+    } else if (
+      updateData.profileImage &&
+      updateData.profileImage.startsWith("blob:")
+    ) {
+      delete updateData.profileImage;
+    }
+
+    const actualData = await userService.updateUserInfo(id, updateData);
+
+    if (!actualData) return res.status(404).json({ error: "User not found" });
+    console.log("actualData", actualData);
+    res.status(200).json(actualData);
+  } catch (error: any) {
+    console.error("❌ update error detail:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 

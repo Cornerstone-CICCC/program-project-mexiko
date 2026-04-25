@@ -37,6 +37,8 @@ export interface IUser extends Document {
     enum: ["Male", "Female", "Other", "All"];
     default: "All";
   };
+  isOnline: { type: Boolean; default: false };
+  lastActive: { type: Date; default: Date };
 }
 
 const UserSchema = new Schema<IUser>(
@@ -99,7 +101,10 @@ const UserSchema = new Schema<IUser>(
       default: "All",
     },
     mbtiTestchecked: { type: Boolean, default: false },
+    isOnline: { type: Boolean, default: false },
+    lastActive: { type: Date, default: Date.now },
   },
+
   { timestamps: true },
 );
 

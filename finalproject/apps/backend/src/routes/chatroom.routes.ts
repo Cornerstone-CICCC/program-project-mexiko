@@ -32,6 +32,9 @@ router.post("/:roomId/block", chatController.blockUser);
 
 router.post("/:roomId/reveal", chatController.toggleReveal);
 
+router.get("/blacklist/list", chatController.getBlacklist);
+router.post("/:roomId/unblock", chatController.unblockUser);
+
 router.post(
   "/:roomId/messages",
   upload.fields([

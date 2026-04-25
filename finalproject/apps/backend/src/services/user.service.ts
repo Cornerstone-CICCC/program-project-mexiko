@@ -84,7 +84,8 @@ export const updateUserInfo = async (idOrUid: string, updateData: any) => {
   console.log("id", id);
   console.log("updateData", updateData);
 
-  const actualData = updateData.userInfo ? updateData.userInfo : updateData;
+  //const actualData = updateData.userInfo ? updateData.userInfo : updateData;
+  const actualData = updateData.userInfo || updateData;
 
   const filteredData = Object.keys(actualData)
     .filter((key) => allowedFields.includes(key))

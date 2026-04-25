@@ -16,6 +16,8 @@ import dbTestRouter from "./routes/db-test.routes";
 import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
+import { User } from "./models/user.model";
+
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 console.log("🔍 Verificando variables de entorno...");
@@ -75,18 +77,71 @@ const io = new Server(httpServer, {
 
 app.set("io", io);
 
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+// io.on("connection", (socket) => {
+//   console.log("A user connected:", socket.id);
 
-  socket.on("join_room", (roomId) => {
-    socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+//   socket.on("join_room", (roomId) => {
+//     socket.join(roomId);
+//     console.log(`User joined room: ${roomId}`);
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("User disconnected");
+//   });
+// });
+
+const onlineUsers = new Map();
+
+io.on("connection", (socket) => {
+  const userId = socket.handshake.auth.userId;
+  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`); // <- 추가
+
+  if (userId) {
+    onlineUsers.set(userId, socket.id);
+    updateUserStatus(userId, true);
+  }
+
+  socket.on("ping_online", async () => {
+    console.log(`🔥 PING RECEIVED FROM: ${userId}`);
+    if (!userId) return;
+
+    const now = new Date();
+    await User.updateOne(
+      { firebaseUid: userId },
+      {
+        $set: {
+          isOnline: true,
+          lastActive: now,
+          lastLogin: now,
+        },
+      },
+    );
+
+    io.emit("user_status_changed", { userId, status: "online" });
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
+  socket.on("disconnect", async () => {
+    if (userId) {
+      onlineUsers.delete(userId);
+      await updateUserStatus(userId, false);
+    }
   });
 });
+
+async function updateUserStatus(userId: string, isOnline: boolean) {
+  try {
+    await User.updateOne(
+      { firebaseUid: userId },
+      { $set: { isOnline, lastActive: new Date() } },
+    );
+    io.emit("user_status_changed", {
+      userId,
+      status: isOnline ? "online" : "offline",
+    });
+  } catch (err) {
+    console.error("Status update error:", err);
+  }
+}
 
 // ===== MIDDLEWARE =====
 app.use(express.json());

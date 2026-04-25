@@ -1,6 +1,14 @@
 import { Report, IReport } from "../models/report.model";
 import mongoose from "mongoose";
 
+//typre check
+const toObjectId = (id: any) => {
+  if (id && mongoose.Types.ObjectId.isValid(id)) {
+    return new mongoose.Types.ObjectId(id as string);
+  }
+  return null;
+};
+
 export const getReports = async (
   query: object,
   page: number,
@@ -26,18 +34,45 @@ export const createManyReports = async (
   reportItems: Partial<IReport>[],
   reporterId: string,
 ) => {
-  const data = reportItems.map((item) => ({
-    ...item,
-    reporterId: new mongoose.Types.ObjectId(reporterId),
-    targetId: item.targetId
-      ? new mongoose.Types.ObjectId(item.targetId as string)
-      : undefined,
-    chatRoomId: item.chatRoomId
-      ? new mongoose.Types.ObjectId(item.chatRoomId as string)
-      : undefined,
-    status: "Pending" as const,
-    evidenceImages: item.evidenceImages || [],
-  }));
+  const reporterOid = toObjectId(reporterId);
+  if (!reporterOid) throw new Error("Invalid Reporter ID format");
+
+  const data = reportItems.map((item) => {
+    console.log("--- Report Item Debug ---");
+    console.log(
+      "Incoming targetId:",
+      item.targetId,
+      "Type:",
+      typeof item.targetId,
+    );
+    console.log(
+      "Incoming chatRoomId:",
+      item.chatRoomId,
+      "Type:",
+      typeof item.chatRoomId,
+    );
+
+    const targetOid = toObjectId(item.targetId);
+    const chatRoomOid = toObjectId(item.chatRoomId);
+
+    console.log("Converted targetOid:", targetOid);
+    console.log("Converted chatRoomOid:", chatRoomOid);
+
+    if (!targetOid) {
+      throw new Error(
+        `Invalid Target ID: [${item.targetId}] is not a 24-char hex string.`,
+      );
+    }
+
+    return {
+      ...item,
+      reporterId: reporterOid,
+      targetId: targetOid,
+      chatRoomId: chatRoomOid || undefined,
+      status: "Pending" as const,
+      evidenceImages: item.evidenceImages || [],
+    };
+  });
 
   return await Report.insertMany(data);
 };

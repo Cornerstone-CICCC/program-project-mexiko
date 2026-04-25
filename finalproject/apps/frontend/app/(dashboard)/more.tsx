@@ -1,5 +1,5 @@
 // app/(more)/index.tsx
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { router } from "expo-router";
 import {
   Alert,
@@ -19,6 +19,14 @@ import authService from "@/services/auth.services";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import DeleteAccountModal from "@/components/DeleteAccountModal";
 import { API_ENDPOINTS } from "@/config/api";
+import { useRouter, useFocusEffect } from "expo-router";
+
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
 
 export default function MoreScreen() {
   const [newMessageAlerts, setNewMessageAlerts] = useState(true);
@@ -28,10 +36,34 @@ export default function MoreScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const currentUser = auth.currentUser;
   const userEmail = currentUser?.email || "No email";
   const userId = currentUser?.uid;
+
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/chatroom");
+      console.log("chat room response", response);
+      if (response.data.currentUserId) {
+        setCurrentUserId(response.data.currentUserId);
+      }
+    } catch (error) {
+      console.error("Fetch rooms error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("fetch room");
+      fetchRooms();
+    }, []),
+  );
 
   const handleLogout = async () => {
     setIsLoggingOut(true);

@@ -68,6 +68,8 @@ const ChatRoom = () => {
   const [targetInfo, setTargetInfo] = useState<{
     mbti: string;
     score: number;
+    name: string;
+    profileSource: any;
   } | null>(null);
 
   const fetchMessages = async (isMore = false) => {
@@ -129,22 +131,45 @@ const ChatRoom = () => {
           (p: any) => p.firebaseUid !== currentUserId,
         );
 
-        const myMbti = me?.mbtiType || me?.mbti || "ENFP";
-        const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
-
-        console.log("MBTI Check:", { myMbti, otherMbti });
-
-        const score = calculateSynergy(myMbti, otherMbti);
-
         if (other) {
-          setTargetInfo({
-            mbti: otherMbti,
-            score: score,
-          });
+          let profileSource;
+          if (room.isRevealed && other.profileImage) {
+            const imageUrl = other.profileImage.startsWith("http")
+              ? other.profileImage
+              : `${SERVER_URL}/uploads/${other.profileImage}`;
+            profileSource = { uri: imageUrl };
+          } else {
+            profileSource =
+              other.gender === "Female"
+                ? require("@/assets/images/girl-profile.png")
+                : require("@/assets/images/man-profile-gray.png");
+          }
+
+          const myMbti = me?.mbtiType || me?.mbti || "ENFP";
+          const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
+
+          console.log("MBTI Check:", { myMbti, otherMbti });
+
+          const score = calculateSynergy(myMbti, otherMbti);
+          console.log("chatroom other:", other.fullName.first);
+          console.log("profileSource:", profileSource);
+          if (other) {
+            setTargetInfo({
+              mbti: otherMbti,
+              score: score,
+              name: other.fullName.first + " " + other.fullName.last,
+              profileSource: profileSource,
+            });
+          }
         }
       } else {
         console.log("⚠️ No participants data found in room object");
-        setTargetInfo({ mbti: "---", score: 0 });
+        setTargetInfo({
+          mbti: "---",
+          score: 0,
+          name: "Unknown",
+          profileSource: "",
+        });
       }
 
       if (dbMessages.length < 50) setHasMore(false);
@@ -320,7 +345,7 @@ const ChatRoom = () => {
 
   useEffect(() => {
     if (!roomId || !myId) return;
-    const socket = getSocket();
+    const socket = getSocket(myId);
 
     // Listen for the other person's consent
     socket.on("receive_reveal_request", ({ senderId }) => {
@@ -360,7 +385,7 @@ const ChatRoom = () => {
 
   useEffect(() => {
     if (!roomId || !myId) return;
-    const socket = getSocket();
+    const socket = getSocket(myId);
     socket.emit("join_room", roomId);
 
     socket.on("messages_read", ({ roomId: readRoomId, userId: readerId }) => {
@@ -619,6 +644,17 @@ const ChatRoom = () => {
     );
   };
 
+  const handleProfileImageClick = () => {
+    if (!targetInfo?.profileSource) return;
+
+    const imageUri =
+      typeof targetInfo.profileSource === "number"
+        ? RNImage.resolveAssetSource(targetInfo.profileSource).uri
+        : targetInfo.profileSource.uri;
+
+    setSelectedFullImage(imageUri);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -627,24 +663,49 @@ const ChatRoom = () => {
           <Link href="../" push asChild>
             <Entypo name="chevron-thin-left" size={24} color="#1e293b" />
           </Link>
-          <View className="flex-1 ml-4">
-            <View className="flex-row items-center">
-              <Text className="text-xl font-bold text-slate-900 mr-2">
-                {targetInfo?.mbti || "---"}
-              </Text>
-              <View className="bg-green-100 px-2 py-0.5 rounded-full">
-                <Text className="text-green-600 text-[10px] font-bold">
-                  {targetInfo
-                    ? `${targetInfo.score}% Match`
-                    : "Calculating..."}{" "}
+
+          <View className="flex-1 ml-4 flex-row items-center">
+            {targetInfo?.profileSource && (
+              <TouchableOpacity
+                onPress={handleProfileImageClick}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={targetInfo.profileSource}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    marginRight: 12,
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+
+            <View className="flex-1">
+              <View className="flex-row items-center">
+                <Text className="text-xl font-bold text-slate-900 mr-2">
+                  {isRevealed && targetInfo?.name
+                    ? `${targetInfo.name} (${targetInfo.mbti})`
+                    : targetInfo?.mbti || "---"}
                 </Text>
+                <View className="bg-green-100 px-2 py-0.5 rounded-full">
+                  <Text className="text-green-600 text-[10px] font-bold">
+                    {targetInfo
+                      ? `${targetInfo.score}% Match`
+                      : "Calculating..."}
+                  </Text>
+                </View>
               </View>
+              {!isRevealed && (
+                <Text className="text-slate-400 text-[10px] mt-1">
+                  <Entypo name="back-in-time" size={12} color="#94a3b8" />{" "}
+                  {timeLeft} left
+                </Text>
+              )}
             </View>
-            <Text className="text-slate-400 text-[10px] mt-1">
-              <Entypo name="back-in-time" size={12} color="#94a3b8" />{" "}
-              {timeLeft} left
-            </Text>
           </View>
+
           <Link href={`/room/${roomId}/settings`} asChild>
             <TouchableOpacity>
               <Entypo name="dots-three-vertical" size={20} color="#1e293b" />
@@ -653,26 +714,28 @@ const ChatRoom = () => {
         </View>
       </View>
 
-      <View style={styles.bannerContainer}>
-        <View className="flex-row items-center justify-center px-4 py-2">
-          <Ionicons
-            name="lock-closed"
-            size={14}
-            color="#6366F1"
-            style={{ marginRight: 6 }}
-          />
-          <Text style={styles.bannerText}>
-            Mutual consent required for full profile reveal
-          </Text>
-          <TouchableOpacity className="ml-2" onPress={handleShowInfo}>
+      {!isRevealed && (
+        <View style={styles.bannerContainer}>
+          <View className="flex-row items-center justify-center px-4 py-2">
             <Ionicons
-              name="information-circle-outline"
-              size={16}
+              name="lock-closed"
+              size={14}
               color="#6366F1"
+              style={{ marginRight: 6 }}
             />
-          </TouchableOpacity>
+            <Text style={styles.bannerText}>
+              Mutual consent required for full profile reveal
+            </Text>
+            <TouchableOpacity className="ml-2" onPress={handleShowInfo}>
+              <Ionicons
+                name="information-circle-outline"
+                size={16}
+                color="#6366F1"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}

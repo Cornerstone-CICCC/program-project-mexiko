@@ -24,6 +24,8 @@ axios.defaults.withCredentials = true;
 
 const chatSettings = () => {
   const { id, gender, name } = useLocalSearchParams();
+  const [isRevealed, setIsRevealed] = useState(false);
+
   console.log("name", name);
   console.log("id", id);
   console.log("chatroom");
@@ -49,8 +51,19 @@ const chatSettings = () => {
           (p: any) => p.firebaseUid !== myId,
         );
 
+        console.log("MongoDB ID (_id):", otherData._id);
+        console.log("Firebase UID:", otherData.firebaseUid);
+
+        console.log(
+          "Full ID from Server:",
+          otherData._id,
+          "Length:",
+          otherData._id?.length,
+        );
+
         setMe(myData);
         setOtherUser(otherData);
+        setIsRevealed(room.isRevealed || false);
       } catch (error) {
         console.error("data loading failed:", error);
       } finally {
@@ -61,11 +74,25 @@ const chatSettings = () => {
     if (id) fetchInfo();
   }, [id]);
 
-  const getProfileImage = (userGender?: string) => {
-    if (userGender === "Female") {
-      return require("@/assets/images/girl-profile-pink.png");
+  const getOtherProfileImage = () => {
+    if (isRevealed && otherUser?.profileImage) {
+      const imageUrl = otherUser.profileImage.startsWith("http")
+        ? otherUser.profileImage
+        : `${axios.defaults.baseURL}/uploads/${otherUser.profileImage}`;
+      return { uri: imageUrl };
     }
-    return require("@/assets/images/man-profile-gray.png");
+    return otherUser?.gender === "Female"
+      ? require("@/assets/images/girl-profile.png")
+      : require("@/assets/images/man-profile-gray.png");
+  };
+
+  const getDisplayName = () => {
+    if (!otherUser) return "Loading...";
+
+    if (isRevealed && otherUser.fullName) {
+      return `${otherUser.fullName.first} ${otherUser.fullName.last || ""}`;
+    }
+    return `${otherUser.mbtiType}`;
   };
 
   const [isNotifEnabled, setIsNotifEnabled] = useState(true);
@@ -102,20 +129,44 @@ const chatSettings = () => {
     );
   };
 
+  // const handleBlockUser = async (roomId: string) => {
+  //   try {
+  //     const response = await axios.post(`/chatroom/${roomId}/block`);
+  //     if (response.data.success) {
+  //       setBlockModalVisible(false);
+
+  //       Alert.alert(
+  //         "Blocked",
+  //         `${otherUser?.mbtiType || "User"} has been blocked.`,
+  //       );
+  //       router.replace("/(dashboard)/chat");
+  //     }
+  //   } catch (error) {
+  //     Alert.alert("Error", "Could not block user.");
+  //   }
+  // };
+
   const handleBlockUser = async (roomId: string) => {
     try {
       const response = await axios.post(`/chatroom/${roomId}/block`);
+      console.log("blockUser response:", response);
       if (response.data.success) {
         setBlockModalVisible(false);
 
-        Alert.alert(
-          "Blocked",
-          `${otherUser?.mbtiType || "User"} has been blocked.`,
-        );
-        router.replace("/(dashboard)/chat");
+        Alert.alert("User Blocked", "The conversation has been closed.", [
+          {
+            text: "OK",
+            onPress: () => router.replace("/(dashboard)/chat"),
+          },
+        ]);
       }
-    } catch (error) {
-      Alert.alert("Error", "Could not block user.");
+    } catch (error: any) {
+      console.error("Block User Error:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.error ||
+          "Failed to block user. Please try again.",
+      );
     }
   };
 
@@ -148,7 +199,7 @@ const chatSettings = () => {
         <View className="bg-grey-600 p-10 items-center ">
           <View className="w-32 h-32 bg-slate-200 rounded-full relative">
             <Image
-              source={getProfileImage(me?.gender)}
+              source={getOtherProfileImage()}
               style={{ width: "100%", height: "100%", borderRadius: 100 }}
               resizeMode="cover"
             />
@@ -156,15 +207,8 @@ const chatSettings = () => {
 
           <View className="flex-row justify-between items-center mb-5">
             <Text className="text-2xl font-bold text-slate-900">
-              {typeof me?.fullName === "object"
-                ? `${me.fullName.first} ${me.fullName.last}`
-                : me?.fullName || "My Profile"}
+              {getDisplayName()}
             </Text>
-            <Link href="/1/edit" asChild>
-              <TouchableOpacity>
-                <Entypo name="pencil" size={24} color="#6366f1" />
-              </TouchableOpacity>
-            </Link>
           </View>
         </View>
 
@@ -223,17 +267,29 @@ const chatSettings = () => {
 
         {/*  Report */}
         <View style={styles.groupCard}>
-          <Link href={`/room/${id}/report`} asChild>
-            <TouchableOpacity style={styles.itemContainer} activeOpacity={0.7}>
-              <View style={styles.leftSection}>
-                <View style={styles.iconWrapper}>
-                  <Ionicons name="warning-outline" size={18} color="#EF4444" />
-                </View>
+          <TouchableOpacity
+            style={styles.itemContainer}
+            activeOpacity={0.7}
+            onPress={() => {
+              console.log("Sending targetId to ReportScreen:", otherUser?._id);
 
-                <Text style={styles.itemText}>Report</Text>
+              router.push({
+                pathname: `/room/${id}/report`,
+                params: {
+                  id: id,
+                  targetId: otherUser?._id || otherUser?.firebaseUid,
+                  name: getDisplayName(),
+                },
+              });
+            }}
+          >
+            <View style={styles.leftSection}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="warning-outline" size={18} color="#EF4444" />
               </View>
-            </TouchableOpacity>
-          </Link>
+              <Text style={styles.itemText}>Report</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* block modal */}
@@ -245,12 +301,15 @@ const chatSettings = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.bottomSheet}>
-              <Text style={styles.modalTitle}>Block User</Text>
+              <Text style={styles.modalTitle}>
+                Block{" "}
+                {isRevealed ? otherUser?.fullName?.first : otherUser?.mbtiType}?
+              </Text>
 
               <Text style={styles.modalSubTitle}>
-                They won't be able to send you messages or see your Moments.
-                They won't receive a notification that they've been blocked
-                either.
+                {isRevealed ? otherUser?.fullName?.first : "This user"} won't be
+                able to send you messages or see your profile. This action will
+                end your conversation.
               </Text>
 
               <TouchableOpacity

@@ -9,7 +9,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { Link } from "expo-router";
@@ -19,6 +19,15 @@ import { auth } from "@/config/firebase";
 import { MBTI_DETAILS } from "@/utils/mbti";
 import * as Location from "expo-location";
 import Slider from "@react-native-community/slider";
+import { useRouter, useFocusEffect } from "expo-router";
+import { getSocket } from "../utils/socket";
+
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
 
 const Profile = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -26,27 +35,66 @@ const Profile = () => {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [birthDate, setBirthDate] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const editPath = user?.firebaseUid ? `/${user.firebaseUid}/edit` : "/edit";
 
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/chatroom");
+      console.log("chat room response", response);
+      if (response.data.currentUserId) {
+        setCurrentUserId(response.data.currentUserId);
+      }
+    } catch (error) {
+      console.error("Fetch rooms error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSafeUserId = () => {
+    return user?.firebaseUid || user?.uid || auth.currentUser?.uid;
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("fetch room");
+      fetchRooms();
+    }, []),
+  );
+
   const getLocation = async () => {
+    const userId = getSafeUserId();
+    if (!userId) {
+      Alert.alert("Error", "User session not found.");
+      return;
+    }
+
     try {
       setLoadingLocation(true);
-
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission denied",
-          "Allow location access to set your profile.",
-        );
+        Alert.alert("Permission denied", "Allow location access.");
         return;
       }
 
       const locationData = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = locationData.coords;
+
+      if (latitude === 0 && longitude === 0) {
+        Alert.alert(
+          "Location Error",
+          "Failed to retrieve coordinates. Please check your device GPS settings.",
+        );
+        return;
+      }
 
       const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
       const address = geo?.[0];
@@ -60,7 +108,7 @@ const Profile = () => {
           ? `${city}, ${region}`
           : `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
 
-      await updateLocation(user.uid, locationString);
+      await updateLocation(userId, locationString);
     } catch (e) {
       console.error(e);
     } finally {
@@ -89,14 +137,15 @@ const Profile = () => {
     setImage(uri);
     //console.log("uri", uri);
     //const currentUser = auth.currentUser;
+    const userId = getSafeUserId();
 
-    await updateProfile(user.uid, uri);
+    await updateProfile(userId, uri);
   };
 
   // connect db
   const getUserInfo = async (userId: string, selectedMbti: string) => {
     try {
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const response = await fetch(`${SERVER_URL}/users/${userId}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
@@ -135,30 +184,57 @@ const Profile = () => {
     userId: string,
     selectedprofileImage: string,
   ) => {
+    const finalId = userId || auth.currentUser?.uid;
+
+    if (!finalId) {
+      console.error("Error: User ID not found.");
+      return;
+    }
+
+    console.log("Attempting upload with ID:", finalId);
+
     try {
       setIsSyncing(true);
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        const response = await fetch(selectedprofileImage);
+        const blob = await response.blob();
+        formData.append("profileImage", blob, "profile.jpg");
+      } else {
+        const filename = selectedprofileImage.split("/").pop() || "profile.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append("profileImage", {
+          uri: selectedprofileImage,
+          name: filename,
+          type: type,
+        } as any);
+      }
+
+      const userInfo = { profileImage: selectedprofileImage };
+      formData.append("userInfo", JSON.stringify(userInfo));
+
+      const response = await fetch(`${SERVER_URL}/users/${finalId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userInfo: {
-            profileImage: selectedprofileImage,
-          },
-        }),
+        body: formData,
+        headers: {
+          Accept: "application/json",
+        },
       });
-      console.log("response", response);
+
       if (response.ok) {
-        setUser((prev: any) => ({
-          ...prev,
-          profileImage: selectedprofileImage,
-        }));
+        const data = await response.json();
+        setUser(data);
+        setImage(data.profileImage);
         console.log("✅ DB Update Success");
+      } else {
+        const errorData = await response.json();
+        console.error("❌ server response error:", errorData);
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
@@ -166,7 +242,7 @@ const Profile = () => {
   const updateLocation = async (userId: string, location: string) => {
     try {
       setIsSyncing(true);
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const response = await fetch(`${SERVER_URL}/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -222,13 +298,33 @@ const Profile = () => {
 
   const bio = user?.bio || "Write Your Introduction";
   //const locationText = user?.location;
-  const locationText =
-    typeof user?.location === "string"
-      ? user.location
-      : user?.location?.type === "Point"
-        ? "Location set"
-        : "";
+  const locationText = (() => {
+    if (!user?.location) return "Set Location";
+
+    if (typeof user.location === "string") return user.location;
+
+    if (
+      user.location.type === "Point" &&
+      Array.isArray(user.location.coordinates)
+    ) {
+      return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+    }
+
+    return "Set Location";
+  })();
   console.log("locationText", locationText);
+
+  const getImageUrl = (path: string) => {
+    if (!path) return null;
+    if (
+      path.startsWith("http") ||
+      path.startsWith("blob") ||
+      path.startsWith("file")
+    ) {
+      return path;
+    }
+    return `${SERVER_URL}/uploads/${path}`;
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
@@ -242,7 +338,7 @@ const Profile = () => {
             <Image
               source={
                 image
-                  ? { uri: image }
+                  ? { uri: getImageUrl(image) }
                   : require("@/assets/images/man-profile-gray.png")
               }
               style={{ width: "100%", height: "100%", borderRadius: 100 }}
@@ -310,7 +406,13 @@ const Profile = () => {
           <View className="flex-row justify-between items-center">
             <Text className="text-2xl font-bold text-slate-900">Birthday</Text>
             <Text className="text-slate-900 text-xl font-bold">
-              {user?.birthDate ? user.birthDate.split("T")[0] : "Not set"}
+              {user?.birthDate
+                ? new Date(user.birthDate).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Not set"}
             </Text>
           </View>
         </View>

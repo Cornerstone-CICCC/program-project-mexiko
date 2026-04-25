@@ -21,6 +21,7 @@ import {
 import { auth } from "@/config/firebase";
 import { API_ENDPOINTS } from "@/config/api";
 import { useRouter, useFocusEffect } from "expo-router";
+import { getSocket } from "../utils/socket";
 
 const GENDER_OPTIONS: Array<NonNullable<MatchFilters["gender"]>> = [
   "All",
@@ -36,6 +37,13 @@ const DISTANCE_OPTIONS: Array<{ label: string; value?: number }> = [
   { label: "Any", value: undefined },
 ];
 
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
+
 export default function MatchesScreen() {
   const [matches, setMatches] = useState<MatchUiItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,51 +53,90 @@ export default function MatchesScreen() {
   const [selectedGender, setSelectedGender] =
     useState<NonNullable<MatchFilters["gender"]>>("All");
   const [selectedDistance, setSelectedDistance] = useState<number | undefined>(
-    undefined
+    undefined,
   );
 
   const router = useRouter();
 
-  const fetchMatches = useCallback(
-    async (filters?: MatchFilters) => {
-      try {
-        setLoading(true);
-        setError(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-        const user = auth.currentUser;
-
-        if (!user) {
-          throw new Error("You need log-in.");
-        }
-
-        const userResponse = await fetch(API_ENDPOINTS.USER(user.uid), {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        const userData = await userResponse.json();
-
-        if (!userResponse.ok) {
-          throw new Error("Failed to load user info");
-        }
-
-        const currentMbti = userData.mbtiType || "ISTP";
-        setMyMbti(currentMbti);
-
-        const data = await getMatches(currentMbti, filters);
-
-        setMatches(data.filter((m) => !m.isOpened));
-      } catch (err: any) {
-        setError(err.message || "Failed to load matches");
-      } finally {
-        setLoading(false);
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/chatroom");
+      console.log("chat room response", response);
+      if (response.data.currentUserId) {
+        setCurrentUserId(response.data.currentUserId);
       }
-    },
-    []
+    } catch (error) {
+      console.error("Fetch rooms error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // useEffect(() => {
+  //   if (!currentUserId) return;
+
+  //   const socket = getSocket(currentUserId);
+
+  //   if (!socket) return;
+
+  //   if (!socket.connected) {
+  //     socket.connect();
+  //   }
+
+  //   const interval = setInterval(() => {
+  //     socket.emit("ping_online");
+  //   }, 30000);
+
+  //   return () => clearInterval(interval);
+  // }, [currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("fetch room");
+      fetchRooms();
+    }, []),
   );
+
+  const fetchMatches = useCallback(async (filters?: MatchFilters) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const user = auth.currentUser;
+
+      if (!user) {
+        throw new Error("You need log-in.");
+      }
+
+      const userResponse = await fetch(API_ENDPOINTS.USER(user.uid), {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const userData = await userResponse.json();
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to load user info");
+      }
+
+      const currentMbti = userData.mbtiType || "ISTP";
+      setMyMbti(currentMbti);
+
+      const data = await getMatches(currentMbti, filters);
+
+      setMatches(data.filter((m) => !m.isOpened));
+    } catch (err: any) {
+      setError(err.message || "Failed to load matches");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchMatches({
@@ -104,7 +151,7 @@ export default function MatchesScreen() {
         gender: selectedGender,
         maxDistance: selectedDistance,
       });
-    }, [fetchMatches, selectedGender, selectedDistance])
+    }, [fetchMatches, selectedGender, selectedDistance]),
   );
 
   const featured = matches.slice(0, 3);
