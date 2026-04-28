@@ -1,7 +1,7 @@
 import { router } from "expo-router";
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import SettingsScreenHeader from "@/components/SettingsScreenHeader";
-import SettingRow from "@/components/SettingRow";
 
 export default function PrivacyScreen() {
   return (
@@ -19,17 +19,25 @@ export default function PrivacyScreen() {
 
         <Text style={styles.sectionTitle}>Safety</Text>
 
-        <SettingRow
-          label="Reports"
-          icon="flag-outline"
-          onPress={() => router.push("/(more)/reports")}
-        />
+        <View style={styles.card}>
+          <Pressable
+            style={styles.row}
+            onPress={() => router.push("/(more)/reports")}
+          >
+            <Ionicons name="flag-outline" size={26} color="#98A1B3" />
+            <Text style={styles.rowLabel}>Reports</Text>
+          </Pressable>
 
-        <SettingRow
-          label="Blacklist"
-          icon="ban-outline"
-          onPress={() => router.push("/(more)/blacklist")}
-        />
+          <View style={styles.divider} />
+
+          <Pressable
+            style={styles.row}
+            onPress={() => router.push("/(more)/blacklist")}
+          >
+            <Ionicons name="ban-outline" size={26} color="#98A1B3" />
+            <Text style={styles.rowLabel}>Blacklist</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -70,5 +78,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: "#6B7280",
     marginBottom: 10,
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  row: {
+    minHeight: 76,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    gap: 18,
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginLeft: 62,
   },
 });

@@ -158,6 +158,31 @@ export default function UsersPage() {
     setCurrentPage(1)
   }, [sortKey, sortDirection])
 
+  const getVisiblePages = () => {
+    const maxVisible = 8
+
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    const half = Math.floor(maxVisible / 2)
+
+    let start = currentPage - half
+    let end = currentPage + half - 1
+
+    if (start < 1) {
+      start = 1
+      end = maxVisible
+    }
+
+    if (end > totalPages) {
+      end = totalPages
+      start = totalPages - maxVisible + 1
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }
+
   return (
     <>
       <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
@@ -180,11 +205,11 @@ export default function UsersPage() {
           <div className="text-sm text-slate-500">Loading users...</div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
+            <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)]">
+              <table className="w-full min-w-[700px] table-fixed">
                 <thead className="bg-slate-50">
                   <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                    <th className="px-6 py-4">
+                    <th className="w-[25%] px-6 py-4">
                       <button
                         type="button"
                         onClick={() => handleSort('name')}
@@ -195,7 +220,7 @@ export default function UsersPage() {
                       </button>
                     </th>
 
-                    <th className="px-6 py-4">
+                    <th className="w-[35%] px-6 py-4">
                       <button
                         type="button"
                         onClick={() => handleSort('email')}
@@ -206,7 +231,7 @@ export default function UsersPage() {
                       </button>
                     </th>
 
-                    <th className="px-6 py-4">
+                    <th className="w-[20%] px-6 py-4">
                       <button
                         type="button"
                         onClick={() => handleSort('mbti')}
@@ -217,7 +242,7 @@ export default function UsersPage() {
                       </button>
                     </th>
 
-                    <th className="px-6 py-4">
+                    <th className="w-[20%] px-6 py-4">
                       <button
                         type="button"
                         onClick={() => handleSort('suspended')}
@@ -237,19 +262,19 @@ export default function UsersPage() {
                       onClick={() => setSelectedUser(user)}
                       className="cursor-pointer border-t border-[var(--color-border)] transition hover:bg-slate-50"
                     >
-                      <td className="px-6 py-5 font-medium text-slate-800">
+                      <td className="truncate px-6 py-5 font-medium text-slate-800">
                         {getUserDisplayName(user)}
                       </td>
 
-                      <td className="px-6 py-5 text-slate-600">
+                      <td className="truncate px-6 py-5 text-slate-600">
                         {user.email || '-'}
                       </td>
 
-                      <td className="px-6 py-5 text-slate-600">
+                      <td className="truncate px-6 py-5 text-slate-600">
                         {getUserMbti(user)}
                       </td>
 
-                      <td className="px-6 py-5 text-slate-600">
+                      <td className="truncate px-6 py-5 text-slate-600">
                         {getSuspendedLabel(user)}
                       </td>
                     </tr>
@@ -269,21 +294,23 @@ export default function UsersPage() {
               </table>
             </div>
 
-            <div className="mt-6 flex items-center justify-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    page === currentPage
-                      ? 'bg-[var(--color-brand)] text-white'
-                      : 'bg-slate-100 hover:bg-slate-200'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
+            {totalPages > 1 ? (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                {getVisiblePages().map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`rounded-lg px-3 py-1 text-sm ${
+                      page === currentPage
+                        ? 'bg-[var(--color-brand)] text-white'
+                        : 'bg-slate-100 hover:bg-slate-200'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </>
         )}
       </section>
@@ -329,7 +356,7 @@ export default function UsersPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Email
                 </p>
-                <p className="mt-2 text-base font-semibold text-slate-900">
+                <p className="mt-2 break-words text-base font-semibold text-slate-900">
                   {selectedUser.email || '-'}
                 </p>
               </div>

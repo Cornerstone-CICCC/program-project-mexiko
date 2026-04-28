@@ -8,11 +8,6 @@ const DAILY_MATCH_COUNT = 5;
 const RECOMMENDATION_TTL_MS = 24 * 60 * 60 * 1000;
 const CHATROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-type MatchFilters = {
-  gender?: string;
-  maxDistance?: number;
-};
-
 const getUserByFirebaseUid = async (firebaseUid: string) => {
   const user = await User.findOne({ firebaseUid });
 
@@ -24,6 +19,29 @@ const getUserByFirebaseUid = async (firebaseUid: string) => {
 };
 
 const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const hasValidCoordinates = (coordinates?: number[]) => {
+  if (!Array.isArray(coordinates) || coordinates.length !== 2) {
+    return false;
+  }
+
+  const [lng, lat] = coordinates;
+
+  if (typeof lng !== "number" || typeof lat !== "number") {
+    return false;
+  }
+
+  if (Number.isNaN(lng) || Number.isNaN(lat)) {
+    return false;
+  }
+
+  // Avoid filtering out matches because of default/fake coordinates.
+  if (lng === 0 && lat === 0) {
+    return false;
+  }
+
+  return true;
+};
 
 const calculateDistanceKm = (
   fromCoordinates: number[],
@@ -49,18 +67,44 @@ const calculateDistanceKm = (
   return earthRadiusKm * c;
 };
 
-export const getMatchingList = async (
-  firebaseUid: string,
-  filters: MatchFilters = {},
-) => {
+const getAgeFromBirthDate = (birthDate?: Date | string | null) => {
+  if (!birthDate) {
+    return null;
+  }
+
+  const date = new Date(birthDate);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+
+  const monthDifference = today.getMonth() - date.getMonth();
+  const hasBirthdayPassedThisYear =
+    monthDifference > 0 ||
+    (monthDifference === 0 && today.getDate() >= date.getDate());
+
+  if (!hasBirthdayPassedThisYear) {
+    age -= 1;
+  }
+
+  return age;
+};
+
+export const getMatchingList = async (firebaseUid: string) => {
   const currentUser = await getUserByFirebaseUid(firebaseUid);
 
-  const currentUserCoordinates = currentUser.location?.coordinates ?? [0, 0];
+  const preferredGender = (currentUser as any).preferredGender;
+  const preferredAgeRange = (currentUser as any).preferredAgeRange;
+  const preferredDistance = Number((currentUser as any).preferredDistance);
+  const currentUserCoordinates = (currentUser as any).location?.coordinates;
 
   const matchFeed = await Match.findOne({ userId: currentUser._id })
     .populate(
       "matchedUsers.targetId",
-      "email fullName mbtiType images bio gender location"
+      "email fullName mbtiType images bio gender birthDate location",
     )
     .lean();
 
@@ -71,7 +115,6 @@ export const getMatchingList = async (
   const now = new Date();
 
   const activeMatches = matchFeed.matchedUsers
-    //.filter((entry) => entry.expiresAt > now && entry.isOpened === false)
     .filter((entry) => entry.expiresAt > now)
     .map((entry) => {
       const targetUser = entry.targetId as unknown as {
@@ -82,17 +125,22 @@ export const getMatchingList = async (
         images?: string[];
         bio?: string;
         gender?: string;
+        birthDate?: Date | string | null;
         location?: {
           type?: string;
           coordinates?: number[];
         };
       };
 
-      const targetCoordinates = targetUser?.location?.coordinates ?? [0, 0];
-      const distanceKm = calculateDistanceKm(
-        currentUserCoordinates,
-        targetCoordinates,
-      );
+      const targetCoordinates = targetUser?.location?.coordinates;
+
+      const canCalculateDistance =
+        hasValidCoordinates(currentUserCoordinates) &&
+        hasValidCoordinates(targetCoordinates);
+
+      const distanceKm = canCalculateDistance
+        ? calculateDistanceKm(currentUserCoordinates, targetCoordinates!)
+        : null;
 
       return {
         matchId: matchFeed._id.toString(),
@@ -109,20 +157,33 @@ export const getMatchingList = async (
           images: targetUser?.images ?? [],
           bio: targetUser?.bio ?? null,
           gender: targetUser?.gender ?? null,
+          birthDate: targetUser?.birthDate ?? null,
         },
       };
     })
     .filter((entry) => {
       const genderMatches =
-        !filters.gender ||
-        filters.gender === "All" ||
-        entry.targetUser.gender === filters.gender;
+        !preferredGender ||
+        preferredGender === "All" ||
+        entry.targetUser.gender === preferredGender;
+
+      const targetAge = getAgeFromBirthDate(entry.targetUser.birthDate);
+
+      const ageMatches =
+        targetAge === null ||
+        !preferredAgeRange ||
+        typeof preferredAgeRange.min !== "number" ||
+        typeof preferredAgeRange.max !== "number" ||
+        (targetAge >= preferredAgeRange.min &&
+          targetAge <= preferredAgeRange.max);
 
       const distanceMatches =
-        typeof filters.maxDistance !== "number" ||
-        entry.distanceKm <= filters.maxDistance;
+        Number.isNaN(preferredDistance) ||
+        preferredDistance <= 0 ||
+        entry.distanceKm === null ||
+        entry.distanceKm <= preferredDistance;
 
-      return genderMatches && distanceMatches;
+      return genderMatches && ageMatches && distanceMatches;
     })
     .sort((a, b) => b.synergyScore - a.synergyScore)
     .slice(0, 5);
@@ -172,7 +233,6 @@ export const createMatchRequest = async (
     {
       $push: {
         matchedUsers: {
-          //targetId: new mongoose.Types.ObjectId(targetUserId),
           targetId: targetUserId,
           synergyScore,
           isOpened: true,
@@ -257,6 +317,7 @@ export const processMatchInteraction = async (
       status: "active",
     });
   }
+
   console.log("room._id:", room._id);
   console.log("room.roomId:", room.roomId);
 
@@ -284,7 +345,6 @@ export const generateDailyMatches = async () => {
 
       const activeEntries = currentEntries.filter(
         (entry) => entry.expiresAt > now && entry.isOpened === false,
-        //(entry) => entry.expiresAt > now,
       );
 
       if (activeEntries.length >= DAILY_MATCH_COUNT) {
