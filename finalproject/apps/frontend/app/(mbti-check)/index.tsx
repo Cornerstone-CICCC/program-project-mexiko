@@ -12,6 +12,7 @@ import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { auth } from "../../config/firebase";
 import { useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
 
 const { width } = Dimensions.get("window");
 
@@ -86,6 +87,28 @@ export default function MBTIIndex() {
             className="text-slate-400 font-semibold underline"
           ></Link>
         </TouchableOpacity>
+
+        <View style={styles.backButton}>
+          <Link href="/" asChild>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={async () => {
+                try {
+                  await signOut(auth);
+                  console.log("Session cleared!");
+                  router.replace("/login");
+                } catch (error) {
+                  console.error("Sign out error:", error);
+                }
+              }}
+              style={styles.backButton}
+            >
+              <Text className="text-slate-400 font-semibold underline">
+                Reset Session & Go to Login
+              </Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
       </View>
 
       <SafeAreaView edges={["bottom"]} />

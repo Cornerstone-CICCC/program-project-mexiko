@@ -1,12 +1,22 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Switch, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useEffect } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Location from 'expo-location';
-import Slider from '@react-native-community/slider';
-import authService from '@/services/auth.services';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Switch,
+  Platform,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Location from "expo-location";
+import Slider from "@react-native-community/slider";
+import authService from "@/services/auth.services";
 
 interface PreferencesData {
   location: {
@@ -18,27 +28,31 @@ interface PreferencesData {
     min: number;
     max: number;
   };
-  preferredGender: 'Male' | 'Female' | 'Other' | 'All';
+  preferredGender: "Male" | "Female" | "Other" | "All";
   showLocationOnProfile: boolean;
 }
 
 export default function SignUpStep3() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const step1Data = params.step1Data ? JSON.parse(params.step1Data as string) : null;
-  const step2Data = params.step2Data ? JSON.parse(params.step2Data as string) : null;
+  const step1Data = params.step1Data
+    ? JSON.parse(params.step1Data as string)
+    : null;
+  const step2Data = params.step2Data
+    ? JSON.parse(params.step2Data as string)
+    : null;
 
   const [preferences, setPreferences] = useState<PreferencesData>({
     location: {
       coordinates: [0, 0],
-      address: '',
+      address: "",
     },
     preferredDistance: 10,
     preferredAgeRange: {
       min: 18,
       max: 30,
     },
-    preferredGender: 'All',
+    preferredGender: "All",
     showLocationOnProfile: false,
   });
 
@@ -51,7 +65,7 @@ export default function SignUpStep3() {
 
   const checkLocationPermission = async () => {
     const { status } = await Location.getForegroundPermissionsAsync();
-    if (status === 'granted') {
+    if (status === "granted") {
       getCurrentLocation();
     }
   };
@@ -60,8 +74,11 @@ export default function SignUpStep3() {
     setIsGettingLocation(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Allow location access to find people near you');
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Allow location access to find people near you",
+        );
         setIsGettingLocation(false);
         return;
       }
@@ -76,25 +93,28 @@ export default function SignUpStep3() {
       });
 
       const address = reverseGeocode[0]
-        ? `${reverseGeocode[0].city || reverseGeocode[0].region || ''}, ${reverseGeocode[0].country || ''}`
-        : 'Unknown location';
+        ? `${reverseGeocode[0].city || reverseGeocode[0].region || ""}, ${reverseGeocode[0].country || ""}`
+        : "Unknown location";
 
       setPreferences({
         ...preferences,
         location: {
           coordinates: [location.coords.longitude, location.coords.latitude],
-          address: address.trim() || 'Current location',
+          address: address.trim() || "Current location",
         },
       });
     } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Unable to get your location. Please try again or enter manually.');
+      console.error("Error getting location:", error);
+      Alert.alert(
+        "Error",
+        "Unable to get your location. Please try again or enter manually.",
+      );
     } finally {
       setIsGettingLocation(false);
     }
   };
 
-  const updateAgeRange = (type: 'min' | 'max', value: number) => {
+  const updateAgeRange = (type: "min" | "max", value: number) => {
     setPreferences({
       ...preferences,
       preferredAgeRange: {
@@ -106,14 +126,22 @@ export default function SignUpStep3() {
 
   const handleCreateAccount = async () => {
     // Validations before sending data to backend
-    if (!preferences.location.coordinates || preferences.location.coordinates[0] === 0) {
-      Alert.alert('Error', 'Please enable location to find connections near you');
+    if (
+      !preferences.location.coordinates ||
+      preferences.location.coordinates[0] === 0
+    ) {
+      Alert.alert(
+        "Error",
+        "Please enable location to find connections near you",
+      );
       return;
     }
 
     // Validation minimum age
-    if (preferences.preferredAgeRange.min >= preferences.preferredAgeRange.max) {
-      Alert.alert('Error', 'Minimum age must be less than maximum age');
+    if (
+      preferences.preferredAgeRange.min >= preferences.preferredAgeRange.max
+    ) {
+      Alert.alert("Error", "Minimum age must be less than maximum age");
       return;
     }
 
@@ -134,7 +162,7 @@ export default function SignUpStep3() {
         subImages: step2Data?.subImages,
 
         location: {
-          type: 'Point',
+          type: "Point",
           coordinates: preferences.location.coordinates,
         },
         preferredDistance: preferences.preferredDistance,
@@ -146,40 +174,42 @@ export default function SignUpStep3() {
         showLocationOnProfile: preferences.showLocationOnProfile,
       };
 
-      console.log('Creating account with complete data:', completeUserData);
+      console.log("Creating account with complete data:", completeUserData);
 
       const response = await authService.signUp(completeUserData);
 
-      console.log('Sign up response:', response);
+      console.log("Sign up response:", response);
 
       if (response.isNewUser) {
         Alert.alert(
-          '✅ Account Created',
+          "✅ Account Created",
           `Your account has been created successfully!\n\n` +
-          `A verification email has been sent to:\n${step1Data?.email}\n\n` +
-          `Please check your inbox (and spam folder) and click the verification link.`,
+            `A verification email has been sent to:\n${step1Data?.email}\n\n` +
+            `Please check your inbox (and spam folder) and click the verification link.`,
           [
             {
-              text: 'Continue',
-              onPress: () => router.push({
-                pathname: '/verifyEmail',
-                params: { email: step1Data?.email }
-              })
-            }
-          ]
+              text: "Continue",
+              onPress: () =>
+                router.push({
+                  pathname: "/verifyEmail",
+                  params: { email: step1Data?.email },
+                }),
+            },
+          ],
         );
       } else {
-        router.push('/login');
+        router.push("/login");
       }
-
     } catch (error: any) {
-      console.error('Signup error:', error);
-      Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+      console.error("Signup error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to create account. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
   };
-
 
   const handleBack = () => {
     router.back();
@@ -187,7 +217,7 @@ export default function SignUpStep3() {
 
   const formatDistance = (km: number) => {
     if (km < 1) return `${Math.round(km * 1000)} m`;
-    return `${km} km`;
+    return `${km} mile`;
   };
 
   return (
@@ -201,7 +231,10 @@ export default function SignUpStep3() {
           </View>
 
           <View className="h-1.5 bg-white/30 rounded-full overflow-hidden">
-            <View className="h-full bg-white rounded-full" style={{ width: '100%' }} />
+            <View
+              className="h-full bg-white rounded-full"
+              style={{ width: "100%" }}
+            />
           </View>
 
           <View className="flex-row justify-between mt-3">
@@ -234,7 +267,10 @@ export default function SignUpStep3() {
       >
         <View className="items-center justify-center px-6 py-4">
           <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
-            <TouchableOpacity onPress={handleBack} className="absolute left-4 top-4 z-10">
+            <TouchableOpacity
+              onPress={handleBack}
+              className="absolute left-4 top-4 z-10"
+            >
               <Feather name="arrow-left" size={24} color="#4B5563" />
             </TouchableOpacity>
 
@@ -248,7 +284,9 @@ export default function SignUpStep3() {
             <View className="w-full mt-8 gap-5">
               {/* Location Section */}
               <View className="gap-2">
-                <Text className="text-gray-700 text-sm font-semibold ml-1">Your Location</Text>
+                <Text className="text-gray-700 text-sm font-semibold ml-1">
+                  Your Location
+                </Text>
                 <TouchableOpacity
                   onPress={getCurrentLocation}
                   disabled={isGettingLocation}
@@ -257,7 +295,8 @@ export default function SignUpStep3() {
                   <View className="flex-row items-center gap-3 flex-1">
                     <Feather name="map-pin" size={20} color="#6A11CB" />
                     <Text className="text-gray-700 flex-1" numberOfLines={1}>
-                      {preferences.location.address || 'Tap to get your location'}
+                      {preferences.location.address ||
+                        "Tap to get your location"}
                     </Text>
                   </View>
                   {isGettingLocation ? (
@@ -268,12 +307,21 @@ export default function SignUpStep3() {
                 </TouchableOpacity>
 
                 <View className="flex-row items-center justify-between mt-2">
-                  <Text className="text-gray-600 text-sm">Show my city on profile</Text>
+                  <Text className="text-gray-600 text-sm">
+                    Show my city on profile
+                  </Text>
                   <Switch
                     value={preferences.showLocationOnProfile}
-                    onValueChange={(value) => setPreferences({ ...preferences, showLocationOnProfile: value })}
-                    trackColor={{ false: '#D1D5DB', true: '#6A11CB' }}
-                    thumbColor={preferences.showLocationOnProfile ? '#FFFFFF' : '#F3F4F6'}
+                    onValueChange={(value) =>
+                      setPreferences({
+                        ...preferences,
+                        showLocationOnProfile: value,
+                      })
+                    }
+                    trackColor={{ false: "#D1D5DB", true: "#6A11CB" }}
+                    thumbColor={
+                      preferences.showLocationOnProfile ? "#FFFFFF" : "#F3F4F6"
+                    }
                   />
                 </View>
               </View>
@@ -281,36 +329,51 @@ export default function SignUpStep3() {
               {/* Preferred Distance */}
               <View className="gap-2">
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-gray-700 text-sm font-semibold ml-1">Preferred Distance</Text>
-                  <Text className="text-purple-600 font-bold">{formatDistance(preferences.preferredDistance)}</Text>
+                  <Text className="text-gray-700 text-sm font-semibold ml-1">
+                    Preferred Distance
+                  </Text>
+                  <Text className="text-purple-600 font-bold">
+                    {formatDistance(preferences.preferredDistance)}
+                  </Text>
                 </View>
                 <Slider
-                  style={{ width: '100%', height: 40 }}
+                  style={{ width: "100%", height: 40 }}
                   minimumValue={1}
                   maximumValue={100}
                   step={1}
                   value={preferences.preferredDistance}
-                  onValueChange={(value) => setPreferences({ ...preferences, preferredDistance: value })}
+                  onValueChange={(value) =>
+                    setPreferences({ ...preferences, preferredDistance: value })
+                  }
                   minimumTrackTintColor="#6A11CB"
                   maximumTrackTintColor="#D1D5DB"
                   thumbTintColor="#6A11CB"
                 />
                 <View className="flex-row justify-between px-2">
-                  <Text className="text-gray-400 text-xs">1 km</Text>
-                  <Text className="text-gray-400 text-xs">50 km</Text>
-                  <Text className="text-gray-400 text-xs">100 km</Text>
+                  <Text className="text-gray-400 text-xs">1 mi</Text>
+                  <Text className="text-gray-400 text-xs">50 mi</Text>
+                  <Text className="text-gray-400 text-xs">100 mi</Text>
                 </View>
               </View>
 
               {/* Age Range */}
               <View className="gap-3">
-                <Text className="text-gray-700 text-sm font-semibold ml-1">Age Range</Text>
+                <Text className="text-gray-700 text-sm font-semibold ml-1">
+                  Age Range
+                </Text>
                 <View className="flex-row gap-4">
                   <View className="flex-1">
-                    <Text className="text-gray-500 text-xs ml-1 mb-1">Minimum</Text>
+                    <Text className="text-gray-500 text-xs ml-1 mb-1">
+                      Minimum
+                    </Text>
                     <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2">
                       <TouchableOpacity
-                        onPress={() => updateAgeRange('min', Math.max(18, preferences.preferredAgeRange.min - 1))}
+                        onPress={() =>
+                          updateAgeRange(
+                            "min",
+                            Math.max(18, preferences.preferredAgeRange.min - 1),
+                          )
+                        }
                         className="bg-gray-200 rounded-full w-8 h-8 items-center justify-center"
                       >
                         <Feather name="minus" size={18} color="#4B5563" />
@@ -319,7 +382,15 @@ export default function SignUpStep3() {
                         {preferences.preferredAgeRange.min}
                       </Text>
                       <TouchableOpacity
-                        onPress={() => updateAgeRange('min', Math.min(preferences.preferredAgeRange.max - 1, preferences.preferredAgeRange.min + 1))}
+                        onPress={() =>
+                          updateAgeRange(
+                            "min",
+                            Math.min(
+                              preferences.preferredAgeRange.max - 1,
+                              preferences.preferredAgeRange.min + 1,
+                            ),
+                          )
+                        }
                         className="bg-gray-200 rounded-full w-8 h-8 items-center justify-center"
                       >
                         <Feather name="plus" size={18} color="#4B5563" />
@@ -328,10 +399,20 @@ export default function SignUpStep3() {
                   </View>
 
                   <View className="flex-1">
-                    <Text className="text-gray-500 text-xs ml-1 mb-1">Maximum</Text>
+                    <Text className="text-gray-500 text-xs ml-1 mb-1">
+                      Maximum
+                    </Text>
                     <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2">
                       <TouchableOpacity
-                        onPress={() => updateAgeRange('max', Math.max(preferences.preferredAgeRange.min + 1, preferences.preferredAgeRange.max - 1))}
+                        onPress={() =>
+                          updateAgeRange(
+                            "max",
+                            Math.max(
+                              preferences.preferredAgeRange.min + 1,
+                              preferences.preferredAgeRange.max - 1,
+                            ),
+                          )
+                        }
                         className="bg-gray-200 rounded-full w-8 h-8 items-center justify-center"
                       >
                         <Feather name="minus" size={18} color="#4B5563" />
@@ -340,7 +421,15 @@ export default function SignUpStep3() {
                         {preferences.preferredAgeRange.max}
                       </Text>
                       <TouchableOpacity
-                        onPress={() => updateAgeRange('max', Math.min(100, preferences.preferredAgeRange.max + 1))}
+                        onPress={() =>
+                          updateAgeRange(
+                            "max",
+                            Math.min(
+                              100,
+                              preferences.preferredAgeRange.max + 1,
+                            ),
+                          )
+                        }
                         className="bg-gray-200 rounded-full w-8 h-8 items-center justify-center"
                       >
                         <Feather name="plus" size={18} color="#4B5563" />
@@ -349,44 +438,81 @@ export default function SignUpStep3() {
                   </View>
                 </View>
                 <Text className="text-gray-400 text-xs text-center">
-                  Showing people between {preferences.preferredAgeRange.min} and {preferences.preferredAgeRange.max} years old
+                  Showing people between {preferences.preferredAgeRange.min} and{" "}
+                  {preferences.preferredAgeRange.max} years old
                 </Text>
               </View>
 
               {/* Preferred Gender */}
               <View className="gap-2">
-                <Text className="text-gray-700 text-sm font-semibold ml-1">I'm interested in</Text>
+                <Text className="text-gray-700 text-sm font-semibold ml-1">
+                  I'm interested in
+                </Text>
                 <View className="flex-row flex-wrap gap-2">
-                  {(['All', 'Male', 'Female', 'Other'] as const).map((gender) => (
-                    <TouchableOpacity
-                      key={gender}
-                      onPress={() => setPreferences({ ...preferences, preferredGender: gender })}
-                      className={`px-4 py-2 rounded-full ${preferences.preferredGender === gender ? 'bg-purple-600' : 'bg-gray-100'
+                  {(["All", "Male", "Female", "Other"] as const).map(
+                    (gender) => (
+                      <TouchableOpacity
+                        key={gender}
+                        onPress={() =>
+                          setPreferences({
+                            ...preferences,
+                            preferredGender: gender,
+                          })
+                        }
+                        className={`px-4 py-2 rounded-full ${
+                          preferences.preferredGender === gender
+                            ? "bg-purple-600"
+                            : "bg-gray-100"
                         }`}
-                    >
-                      <Text className={`font-medium ${preferences.preferredGender === gender ? 'text-white' : 'text-gray-700'}`}>
-                        {gender === 'All' ? 'Everyone' : gender}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                      >
+                        <Text
+                          className={`font-medium ${preferences.preferredGender === gender ? "text-white" : "text-gray-700"}`}
+                        >
+                          {gender === "All" ? "Everyone" : gender}
+                        </Text>
+                      </TouchableOpacity>
+                    ),
+                  )}
                 </View>
               </View>
 
               {/* Summary Card */}
+              {/* Summary Card */}
               <View className="mt-4 p-4 bg-purple-50 rounded-xl">
-                <Text className="text-purple-800 font-semibold text-center mb-2">Your Discovery Settings</Text>
-                <Text className="text-purple-700 text-sm text-center">
-                  🔍 Looking for {preferences.preferredGender === 'All' ? 'everyone' : preferences.preferredGender.toLowerCase()}
-                  {' • '}
-                  📍 Within {formatDistance(preferences.preferredDistance)}
-                  {' • '}
-                  🎂 Ages {preferences.preferredAgeRange.min}-{preferences.preferredAgeRange.max}
+                <Text className="text-purple-800 font-semibold text-center mb-2">
+                  Your Discovery Settings
                 </Text>
+                <View className="flex-row items-center justify-center flex-wrap">
+                  {/* Looking for */}
+                  <Feather name="search" size={14} color="#7C3AED" />
+                  <Text className="text-purple-700 text-sm ml-1">
+                    {preferences.preferredGender === "All"
+                      ? "everyone"
+                      : preferences.preferredGender.toLowerCase()}
+                  </Text>
+
+                  <Text className="text-purple-300 mx-2">•</Text>
+
+                  {/* Distance */}
+                  <Feather name="map-pin" size={14} color="#7C3AED" />
+                  <Text className="text-purple-700 text-sm ml-1">
+                    {formatDistance(preferences.preferredDistance)}
+                  </Text>
+
+                  <Text className="text-purple-300 mx-2">•</Text>
+
+                  {/* Age */}
+                  <Feather name="calendar" size={14} color="#7C3AED" />
+                  <Text className="text-purple-700 text-sm ml-1">
+                    Ages {preferences.preferredAgeRange.min}-
+                    {preferences.preferredAgeRange.max}
+                  </Text>
+                </View>
               </View>
 
               {/* Create Account Button */}
               <LinearGradient
-                colors={['#6A11CB', '#2575FC']}
+                colors={["#6A11CB", "#2575FC"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 className="w-full rounded-xl shadow-md mt-4"

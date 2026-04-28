@@ -18,7 +18,7 @@ interface SignUpData {
   password: string;
 
   // Information for profile
-  gender: 'Male' | 'Female' | 'Other';
+  gender: "Male" | "Female" | "Other";
   birthDate: string;
   bio: string;
   interests: string[];
@@ -35,7 +35,7 @@ interface SignUpData {
     min: number;
     max: number;
   };
-  preferredGender: 'Male' | 'Female' | 'Other' | 'All';
+  preferredGender: "Male" | "Female" | "Other" | "All";
   showLocationOnProfile: boolean;
 }
 
@@ -94,13 +94,15 @@ class AuthService {
           userData.email,
           userData.password,
         );
-        console.log("✅ New user created in Firebase:", userCredential.user.uid);
+        console.log(
+          "✅ New user created in Firebase:",
+          userCredential.user.uid,
+        );
         isNewUser = true;
 
         // Send email verification
         await sendEmailVerification(userCredential.user);
         console.log("📧 Verification email sent to:", userData.email);
-
       } catch (firebaseError: any) {
         // If email already exists, try to log in instead
         if (firebaseError.code === "auth/email-already-in-use") {
@@ -111,7 +113,10 @@ class AuthService {
             userData.email,
             userData.password,
           );
-          console.log("✅ Automatic login successful:", userCredential.user.uid);
+          console.log(
+            "✅ Automatic login successful:",
+            userCredential.user.uid,
+          );
           isNewUser = false;
         } else {
           throw firebaseError;
@@ -184,7 +189,6 @@ class AuthService {
         ...data,
         isNewUser: data.isNewUser !== undefined ? data.isNewUser : isNewUser,
       };
-
     } catch (error: any) {
       console.error("❌ Error en signUp:", error);
 

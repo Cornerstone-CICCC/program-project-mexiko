@@ -39,7 +39,7 @@ console.log("✅ Variables de entorno verificadas");
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
-cron.schedule("10 00 * * *", async () => {
+cron.schedule("00 08 * * *", async () => {
   // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
@@ -94,7 +94,7 @@ const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
   const userId = socket.handshake.auth.userId;
-  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`); // <- 추가
+  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`);
 
   if (userId) {
     onlineUsers.set(userId, socket.id);

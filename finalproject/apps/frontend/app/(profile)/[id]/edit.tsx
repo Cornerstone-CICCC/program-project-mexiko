@@ -20,6 +20,7 @@ import { auth } from "@/config/firebase";
 import DatePicker from "react-native-ui-datepicker";
 import dayjs from "dayjs";
 import axios from "axios";
+import * as Location from "expo-location";
 
 const SERVER_URL = "http://localhost:3500";
 
@@ -35,6 +36,9 @@ const profileEdit = () => {
   const [preferredGender, setPreferredGender] = useState("All");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(
+    null,
+  );
 
   const [allInterests] = useState([
     "Reading",
@@ -179,6 +183,12 @@ const profileEdit = () => {
         gender: gender,
         birthDate: birthDate,
         preferredGender: preferredGender,
+        location: location
+          ? {
+              type: "Point",
+              coordinates: [location.lng, location.lat],
+            }
+          : undefined,
       };
 
       let response;
@@ -255,6 +265,22 @@ const profileEdit = () => {
     }
     return `${SERVER_URL}/uploads/${path}`;
   };
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        lng: loc.coords.longitude,
+        lat: loc.coords.latitude,
+      });
+    })();
+  }, []);
 
   useEffect(() => {
     const currentUser = auth.currentUser;

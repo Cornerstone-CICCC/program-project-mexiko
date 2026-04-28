@@ -1,18 +1,26 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import DatePicker from "react-native-ui-datepicker";
 import dayjs from "dayjs";
 import { Modal, Pressable } from "react-native";
 
-
-
 interface Step2Data {
-  gender: 'Male' | 'Female' | 'Other' | '';
+  gender: "Male" | "Female" | "Other" | "";
   birthDate: string;
   interests: string[];
   bio: string;
@@ -21,46 +29,66 @@ interface Step2Data {
 }
 
 const INTERESTS_OPTIONS = [
-  'Music', 'Sports', 'Art', 'Technology', 'Travel', 'Food',
-  'Photography', 'Reading', 'Gaming', 'Fitness', 'Fashion',
-  'Movies', 'Dancing', 'Cooking', 'Yoga', 'Nature', 'Business',
-  'Science', 'Writing', 'Podcasts'
+  "Music",
+  "Sports",
+  "Art",
+  "Technology",
+  "Travel",
+  "Food",
+  "Photography",
+  "Reading",
+  "Gaming",
+  "Fitness",
+  "Fashion",
+  "Movies",
+  "Dancing",
+  "Cooking",
+  "Yoga",
+  "Nature",
+  "Business",
+  "Science",
+  "Writing",
+  "Podcasts",
 ];
 
 export default function SignUpStep2() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const step1Data = params.signupData ? JSON.parse(params.signupData as string) : null;
+  const step1Data = params.signupData
+    ? JSON.parse(params.signupData as string)
+    : null;
 
   const [formData, setFormData] = useState<Step2Data>({
-    gender: '',
-    birthDate: '',
+    gender: "",
+    birthDate: "",
     interests: [],
-    bio: '',
+    bio: "",
     profileImage: null,
     subImages: [],
   });
 
-  const [selectedInterest, setSelectedInterest] = useState('');
-  const [customInterest, setCustomInterest] = useState('');
+  const [selectedInterest, setSelectedInterest] = useState("");
+  const [customInterest, setCustomInterest] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-
 
   const handleAddInterest = () => {
     if (selectedInterest && !formData.interests.includes(selectedInterest)) {
       setFormData({
         ...formData,
-        interests: [...formData.interests, selectedInterest]
+        interests: [...formData.interests, selectedInterest],
       });
-      setSelectedInterest('');
-    } else if (customInterest.trim() && !formData.interests.includes(customInterest.trim())) {
+      setSelectedInterest("");
+    } else if (
+      customInterest.trim() &&
+      !formData.interests.includes(customInterest.trim())
+    ) {
       setFormData({
         ...formData,
-        interests: [...formData.interests, customInterest.trim()]
+        interests: [...formData.interests, customInterest.trim()],
       });
-      setCustomInterest('');
+      setCustomInterest("");
       setShowCustomInput(false);
     }
   };
@@ -68,7 +96,7 @@ export default function SignUpStep2() {
   const handleRemoveInterest = (interest: string) => {
     setFormData({
       ...formData,
-      interests: formData.interests.filter(i => i !== interest)
+      interests: formData.interests.filter((i) => i !== interest),
     });
   };
 
@@ -87,7 +115,7 @@ export default function SignUpStep2() {
 
   const pickSubImage = async () => {
     if (formData.subImages.length >= 5) {
-      Alert.alert('Limit reached', 'You can add up to 5 additional photos');
+      Alert.alert("Limit reached", "You can add up to 5 additional photos");
       return;
     }
 
@@ -101,7 +129,7 @@ export default function SignUpStep2() {
     if (!result.canceled) {
       setFormData({
         ...formData,
-        subImages: [...formData.subImages, result.assets[0].uri]
+        subImages: [...formData.subImages, result.assets[0].uri],
       });
     }
   };
@@ -113,53 +141,63 @@ export default function SignUpStep2() {
   };
 
   const validateAndNext = () => {
-    console.log('========== VALIDATION START ==========');
-    console.log('1. Form Data received:', {
+    console.log("========== VALIDATION START ==========");
+    console.log("1. Form Data received:", {
       gender: formData.gender,
       birthDate: formData.birthDate,
       bioLength: formData.bio.length,
       interestsCount: formData.interests.length,
       hasProfileImage: !!formData.profileImage,
-      subImagesCount: formData.subImages.length
+      subImagesCount: formData.subImages.length,
     });
-    console.log('2. Step1 Data:', step1Data);
+    console.log("2. Step1 Data:", step1Data);
 
     // Validations with detailed logging
     if (!formData.gender) {
-      console.log('❌ Validation failed: Gender not selected');
-      Alert.alert('Error', 'Please select your gender');
+      console.log("❌ Validation failed: Gender not selected");
+      Alert.alert("Error", "Please select your gender");
       return;
     }
-    console.log('✅ Gender validation passed');
+    console.log("✅ Gender validation passed");
 
     if (!formData.birthDate) {
-      console.log('❌ Validation failed: Birth date empty');
-      Alert.alert('Error', 'Please enter your birth date');
+      console.log("❌ Validation failed: Birth date empty");
+      Alert.alert("Error", "Please enter your birth date");
       return;
     }
-    console.log('✅ Birth date exists');
+    console.log("✅ Birth date exists");
 
     // Validate format date  DD/MM/YYYY
     const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
     if (!dateRegex.test(formData.birthDate)) {
-      console.log(`❌ Validation failed: Invalid date format. Received: ${formData.birthDate}`);
-      Alert.alert('Error', 'Please use format DD/MM/YYYY');
+      console.log(
+        `❌ Validation failed: Invalid date format. Received: ${formData.birthDate}`,
+      );
+      Alert.alert("Error", "Please use format DD/MM/YYYY");
       return;
     }
-    console.log('✅ Date format is valid');
+    console.log("✅ Date format is valid");
 
     // Validate minimum age (18 years)
-    const [day, month, year] = formData.birthDate.split('/');
+    const [day, month, year] = formData.birthDate.split("/");
     console.log(`3. Parsed date - Day: ${day}, Month: ${month}, Year: ${year}`);
 
-    const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const birthDate = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+    );
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     const dayDiff = today.getDate() - birthDate.getDate();
 
-    console.log(`4. Age calculation - BirthDate: ${birthDate}, Today: ${today}`);
-    console.log(`5. Calculated age: ${age}, MonthDiff: ${monthDiff}, DayDiff: ${dayDiff}`);
+    console.log(
+      `4. Age calculation - BirthDate: ${birthDate}, Today: ${today}`,
+    );
+    console.log(
+      `5. Calculated age: ${age}, MonthDiff: ${monthDiff}, DayDiff: ${dayDiff}`,
+    );
 
     let finalAge = age;
     if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
@@ -168,42 +206,48 @@ export default function SignUpStep2() {
     }
 
     if (finalAge < 18) {
-      console.log(`❌ Validation failed: User is ${finalAge} years old (min 18 required)`);
-      Alert.alert('Error', 'You must be at least 18 years old');
+      console.log(
+        `❌ Validation failed: User is ${finalAge} years old (min 18 required)`,
+      );
+      Alert.alert("Error", "You must be at least 18 years old");
       return;
     }
     console.log(`✅ Age validation passed: User is ${finalAge} years old`);
 
     if (!formData.bio.trim()) {
-      console.log('❌ Validation failed: Bio is empty');
-      Alert.alert('Error', 'Please tell us something about yourself');
+      console.log("❌ Validation failed: Bio is empty");
+      Alert.alert("Error", "Please tell us something about yourself");
       return;
     }
     console.log(`✅ Bio exists: ${formData.bio.length} characters`);
 
     if (formData.bio.length < 20) {
-      console.log(`❌ Validation failed: Bio too short (${formData.bio.length}/20)`);
-      Alert.alert('Error', 'Bio must be at least 20 characters');
+      console.log(
+        `❌ Validation failed: Bio too short (${formData.bio.length}/20)`,
+      );
+      Alert.alert("Error", "Bio must be at least 20 characters");
       return;
     }
     console.log(`✅ Bio length validation passed`);
 
     if (formData.interests.length === 0) {
-      console.log('❌ Validation failed: No interests selected');
-      Alert.alert('Error', 'Please add at least one interest');
+      console.log("❌ Validation failed: No interests selected");
+      Alert.alert("Error", "Please add at least one interest");
       return;
     }
-    console.log(`✅ Interests validation passed: ${formData.interests.length} interests selected`);
-    console.log(`   Interests: ${formData.interests.join(', ')}`);
+    console.log(
+      `✅ Interests validation passed: ${formData.interests.length} interests selected`,
+    );
+    console.log(`   Interests: ${formData.interests.join(", ")}`);
 
     // Preparing data for navigation
-    console.log('========== PREPARING NAVIGATION ==========');
+    console.log("========== PREPARING NAVIGATION ==========");
 
     let step1DataString: string, step2DataString: string;
     try {
       step1DataString = JSON.stringify(step1Data);
       step2DataString = JSON.stringify(formData);
-      console.log('Data stringified successfully');
+      console.log("Data stringified successfully");
       console.log(`Step1 data size: ${step1DataString.length} characters`);
       console.log(`Step2 data size: ${step2DataString.length} characters`);
 
@@ -212,55 +256,66 @@ export default function SignUpStep2() {
       const maxUrlSize = 8000; // The parameters are passed in the URL, so we need to ensure we don't exceed typical URL length limits
 
       if (totalSize > maxUrlSize) {
-        console.warn(`⚠️ Data size (${totalSize}) exceeds recommended limit (${maxUrlSize})`);
-        console.warn('This may cause navigation issues');
+        console.warn(
+          `⚠️ Data size (${totalSize}) exceeds recommended limit (${maxUrlSize})`,
+        );
+        console.warn("This may cause navigation issues");
 
         // Show alert to user about potential issues with large data
         Alert.alert(
-          'Warning',
-          'Your images or data are very large. This might cause issues. Consider using smaller images.',
+          "Warning",
+          "Your images or data are very large. This might cause issues. Consider using smaller images.",
           [
-            { text: 'Continue Anyway', onPress: () => performNavigation(step1DataString, step2DataString) },
-            { text: 'Cancel', style: 'cancel' }
-          ]
+            {
+              text: "Continue Anyway",
+              onPress: () =>
+                performNavigation(step1DataString, step2DataString),
+            },
+            { text: "Cancel", style: "cancel" },
+          ],
         );
         return;
       }
 
       performNavigation(step1DataString, step2DataString);
-
     } catch (error) {
-      console.error('❌ Error stringifying data:', error);
-      Alert.alert('Error', 'Failed to process data. Please try again.');
+      console.error("❌ Error stringifying data:", error);
+      Alert.alert("Error", "Failed to process data. Please try again.");
       return;
     }
   };
 
   // Navigation function
-  const performNavigation = (step1DataString: string, step2DataString: string) => {
-    console.log('10. Executing navigation to /signupStep3');
-    console.log('11. Params being sent:', {
+  const performNavigation = (
+    step1DataString: string,
+    step2DataString: string,
+  ) => {
+    console.log("10. Executing navigation to /signupStep3");
+    console.log("11. Params being sent:", {
       step1DataLength: step1DataString.length,
       step2DataLength: step2DataString.length,
       step1DataPreview: step1DataString.substring(0, 100),
-      step2DataPreview: step2DataString.substring(0, 100)
+      step2DataPreview: step2DataString.substring(0, 100),
     });
 
     try {
       router.push({
-        pathname: '/signupStep3',
+        pathname: "/signupStep3",
         params: {
           step1Data: step1DataString,
-          step2Data: step2DataString
-        }
+          step2Data: step2DataString,
+        },
       });
-      console.log('✅ Navigation pushed successfully');
+      console.log("✅ Navigation pushed successfully");
     } catch (error) {
-      console.error('❌ Navigation error:', error);
-      Alert.alert('Navigation Error', 'Could not navigate to next step. Check console for details.');
+      console.error("❌ Navigation error:", error);
+      Alert.alert(
+        "Navigation Error",
+        "Could not navigate to next step. Check console for details.",
+      );
     }
 
-    console.log('========== VALIDATION END ==========');
+    console.log("========== VALIDATION END ==========");
   };
   const handleBack = () => {
     router.back();
@@ -269,21 +324,23 @@ export default function SignUpStep2() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-purple-700"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1">
         {/* Progress Bar */}
         <View style={{ paddingTop: insets.top }} className="bg-purple-700">
           <View className="px-4 pt-2 pb-4">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white text-xs font-medium">STEP 2 OF 3</Text>
+              <Text className="text-white text-xs font-medium">
+                STEP 2 OF 3
+              </Text>
               <Text className="text-white/70 text-xs">66%</Text>
             </View>
 
             <View className="h-1.5 bg-white/30 rounded-full overflow-hidden">
               <View
                 className="h-full bg-white rounded-full"
-                style={{ width: '66%' }}
+                style={{ width: "66%" }}
               />
             </View>
 
@@ -317,7 +374,6 @@ export default function SignUpStep2() {
         >
           <View className="items-center justify-center px-6 py-4">
             <View className="bg-white w-full max-w-sm rounded-2xl p-6 relative">
-
               <TouchableOpacity
                 onPress={handleBack}
                 className="absolute left-4 top-4 z-10"
@@ -334,10 +390,11 @@ export default function SignUpStep2() {
               </Text>
 
               <View className="w-full mt-8 gap-4">
-
                 {/* Profile Image */}
                 <View className="gap-2">
-                  <Text className="text-gray-700 text-sm ml-1">Profile Photo</Text>
+                  <Text className="text-gray-700 text-sm ml-1">
+                    Profile Photo
+                  </Text>
                   <TouchableOpacity
                     onPress={pickProfileImage}
                     className="items-center justify-center"
@@ -355,7 +412,9 @@ export default function SignUpStep2() {
                     ) : (
                       <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center">
                         <Feather name="camera" size={32} color="#9CA3AF" />
-                        <Text className="text-xs text-gray-400 mt-1">Add photo</Text>
+                        <Text className="text-xs text-gray-400 mt-1">
+                          Add photo
+                        </Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -365,17 +424,25 @@ export default function SignUpStep2() {
                 <View className="gap-2">
                   <Text className="text-gray-700 text-sm ml-1">Gender *</Text>
                   <View className="flex-row gap-3">
-                    {(['Male', 'Female', 'Other'] as const).map((option) => (
+                    {(["Male", "Female", "Other"] as const).map((option) => (
                       <TouchableOpacity
                         key={option}
-                        onPress={() => setFormData({ ...formData, gender: option })}
-                        className={`flex-1 py-3 rounded-xl border-2 ${formData.gender === option
-                          ? 'border-purple-600 bg-purple-50'
-                          : 'border-gray-200 bg-gray-50'
-                          }`}
+                        onPress={() =>
+                          setFormData({ ...formData, gender: option })
+                        }
+                        className={`flex-1 py-3 rounded-xl border-2 ${
+                          formData.gender === option
+                            ? "border-purple-600 bg-purple-50"
+                            : "border-gray-200 bg-gray-50"
+                        }`}
                       >
-                        <Text className={`text-center font-medium ${formData.gender === option ? 'text-purple-600' : 'text-gray-600'
-                          }`}>
+                        <Text
+                          className={`text-center font-medium ${
+                            formData.gender === option
+                              ? "text-purple-600"
+                              : "text-gray-600"
+                          }`}
+                        >
                           {option}
                         </Text>
                       </TouchableOpacity>
@@ -385,7 +452,9 @@ export default function SignUpStep2() {
 
                 {/* Birth Date */}
                 <View className="gap-1">
-                  <Text className="text-gray-700 text-sm ml-1">Birth Date *</Text>
+                  <Text className="text-gray-700 text-sm ml-1">
+                    Birth Date *
+                  </Text>
 
                   <Pressable
                     onPress={() => setShowPicker(true)}
@@ -412,7 +481,6 @@ export default function SignUpStep2() {
                   <Modal visible={showPicker} transparent animationType="fade">
                     <View className="flex-1 bg-black/40 justify-center items-center px-4">
                       <View className="bg-white rounded-2xl p-4 w-full max-w-sm">
-
                         <DatePicker
                           mode="single"
                           date={dayjs("2000-01-01")}
@@ -426,13 +494,10 @@ export default function SignUpStep2() {
                             setShowPicker(false);
                           }}
                         />
-
                       </View>
                     </View>
                   </Modal>
-
                 </View>
-
 
                 {/* Bio */}
                 <View className="gap-1">
@@ -443,7 +508,9 @@ export default function SignUpStep2() {
                     </View>
                     <TextInput
                       value={formData.bio}
-                      onChangeText={(text) => setFormData({ ...formData, bio: text })}
+                      onChangeText={(text) =>
+                        setFormData({ ...formData, bio: text })
+                      }
                       placeholder="Tell us about yourself, your interests, what you're looking for..."
                       placeholderTextColor="#9CA3AF"
                       multiline
@@ -460,14 +527,21 @@ export default function SignUpStep2() {
 
                 {/* Interests */}
                 <View className="gap-2">
-                  <Text className="text-gray-700 text-sm ml-1">Interests *</Text>
+                  <Text className="text-gray-700 text-sm ml-1">
+                    Interests *
+                  </Text>
 
                   {/* Selected Interests Tags */}
                   {formData.interests.length > 0 && (
                     <View className="flex-row flex-wrap gap-2 mb-3">
                       {formData.interests.map((interest) => (
-                        <View key={interest} className="flex-row items-center bg-purple-100 rounded-full px-3 py-1">
-                          <Text className="text-purple-700 text-sm">{interest}</Text>
+                        <View
+                          key={interest}
+                          className="flex-row items-center bg-purple-100 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-purple-700 text-sm">
+                            {interest}
+                          </Text>
                           <TouchableOpacity
                             onPress={() => handleRemoveInterest(interest)}
                             className="ml-2"
@@ -534,13 +608,15 @@ export default function SignUpStep2() {
                             if (!formData.interests.includes(interest)) {
                               setFormData({
                                 ...formData,
-                                interests: [...formData.interests, interest]
+                                interests: [...formData.interests, interest],
                               });
                             }
                           }}
                           className="bg-gray-100 px-3 py-1.5 rounded-full"
                         >
-                          <Text className="text-gray-600 text-sm">{interest}</Text>
+                          <Text className="text-gray-600 text-sm">
+                            {interest}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -548,6 +624,7 @@ export default function SignUpStep2() {
                 </View>
 
                 {/* Additional Photos */}
+                {/*
                 <View className="gap-2">
                   <Text className="text-gray-700 text-sm ml-1">Additional Photos (Optional)</Text>
                   <Text className="text-gray-400 text-xs ml-1 mb-2">Add up to 5 photos to your profile</Text>
@@ -580,33 +657,27 @@ export default function SignUpStep2() {
                     </View>
                   </ScrollView>
                 </View>
+*/}
 
                 {/* Navigation Buttons */}
                 <View className="flex-row gap-3 mt-6">
+                  {/* Back Button */}
                   <TouchableOpacity
                     onPress={handleBack}
-                    className="flex-1 py-3 rounded-xl bg-gray-200"
+                    className="flex-1 h-12 rounded-xl bg-gray-200 items-center justify-center"
                   >
-                    <Text className="text-gray-700 font-semibold text-center">Back</Text>
+                    <Text className="text-gray-700 font-semibold">Back</Text>
                   </TouchableOpacity>
 
-                  <LinearGradient
-                    colors={['#6A11CB', '#2575FC']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    className="flex-1 rounded-xl shadow-md"
+                  {/* Next Button */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={validateAndNext}
+                    disabled={isLoading}
+                    className="flex-1 h-12 rounded-xl bg-[#6A11CB] items-center justify-center"
                   >
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={validateAndNext}
-                      disabled={isLoading}
-                      className="w-full py-3"
-                    >
-                      <Text className="text-white font-semibold text-center text-lg">
-                        Next →
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
+                    <Text className="text-white font-semibold">Next →</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>

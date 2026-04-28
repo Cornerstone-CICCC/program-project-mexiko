@@ -54,80 +54,60 @@ export const getMatchingList = async (
   filters: MatchFilters = {},
 ) => {
   const currentUser = await getUserByFirebaseUid(firebaseUid);
+  const now = new Date();
 
-  const currentUserCoordinates = currentUser.location?.coordinates ?? [0, 0];
+  console.log("=== Matching Search Start (Stored Data) ===");
+  console.log(`User: ${currentUser.fullName?.first} / ID: ${currentUser._id}`);
 
-  const matchFeed = await Match.findOne({ userId: currentUser._id })
-    .populate(
-      "matchedUsers.targetId",
-      "email fullName mbtiType images bio gender location"
-    )
-    .lean();
+  const matchFeed = await Match.findOne({ userId: currentUser._id }).populate({
+    path: "matchedUsers.targetId",
+    model: "User",
+  });
 
-  if (!matchFeed) {
+  if (
+    !matchFeed ||
+    !matchFeed.matchedUsers ||
+    matchFeed.matchedUsers.length === 0
+  ) {
+    console.log("⚠️ No stored matches found for this user.");
     return [];
   }
 
-  const now = new Date();
+  const validMatches = matchFeed.matchedUsers.filter((entry: any) => {
+    return entry.expiresAt > now && entry.targetId !== null;
+  });
 
-  const activeMatches = matchFeed.matchedUsers
-    //.filter((entry) => entry.expiresAt > now && entry.isOpened === false)
-    .filter((entry) => entry.expiresAt > now)
-    .map((entry) => {
-      const targetUser = entry.targetId as unknown as {
-        _id?: mongoose.Types.ObjectId;
-        email?: string;
-        fullName?: { first?: string; last?: string };
-        mbtiType?: string;
-        images?: string[];
-        bio?: string;
-        gender?: string;
-        location?: {
-          type?: string;
-          coordinates?: number[];
-        };
-      };
+  console.log(`>>> Stored Matches Found: ${validMatches.length} users`);
 
-      const targetCoordinates = targetUser?.location?.coordinates ?? [0, 0];
-      const distanceKm = calculateDistanceKm(
-        currentUserCoordinates,
-        targetCoordinates,
+  return validMatches.map((entry: any) => {
+    const target = entry.targetId;
+
+    let distanceKm = 0;
+    if (currentUser.location?.coordinates && target.location?.coordinates) {
+      distanceKm = calculateDistanceKm(
+        currentUser.location.coordinates,
+        target.location.coordinates,
       );
+    }
 
-      return {
-        matchId: matchFeed._id.toString(),
-        targetUserId: targetUser?._id?.toString?.() ?? "",
-        synergyScore: entry.synergyScore,
-        isOpened: entry.isOpened,
-        recommendedAt: entry.recommendedAt,
-        expiresAt: entry.expiresAt,
-        distanceKm,
-        targetUser: {
-          email: targetUser?.email ?? null,
-          fullName: targetUser?.fullName ?? null,
-          mbtiType: targetUser?.mbtiType ?? null,
-          images: targetUser?.images ?? [],
-          bio: targetUser?.bio ?? null,
-          gender: targetUser?.gender ?? null,
-        },
-      };
-    })
-    .filter((entry) => {
-      const genderMatches =
-        !filters.gender ||
-        filters.gender === "All" ||
-        entry.targetUser.gender === filters.gender;
-
-      const distanceMatches =
-        typeof filters.maxDistance !== "number" ||
-        entry.distanceKm <= filters.maxDistance;
-
-      return genderMatches && distanceMatches;
-    })
-    .sort((a, b) => b.synergyScore - a.synergyScore)
-    .slice(0, 5);
-
-  return activeMatches;
+    return {
+      matchId: matchFeed._id.toString(),
+      targetUserId: target._id.toString(),
+      synergyScore: entry.synergyScore,
+      isOpened: entry.isOpened,
+      recommendedAt: entry.recommendedAt,
+      expiresAt: entry.expiresAt,
+      distanceKm: distanceKm,
+      targetUser: {
+        email: target.email,
+        fullName: target.fullName,
+        mbtiType: target.mbtiType,
+        images: target.images || [],
+        bio: target.bio,
+        gender: target.gender,
+      },
+    };
+  });
 };
 
 export const createMatchRequest = async (
@@ -279,12 +259,16 @@ export const generateDailyMatches = async () => {
         `Checking match for user: ${user.fullName?.first} (${user._id})`,
       );
 
+      const coords = user.location?.coordinates;
+      if (!Array.isArray(coords) || (coords[0] === 0 && coords[1] === 0)) {
+        continue;
+      }
+
       const existingFeed = await Match.findOne({ userId: user._id });
       const currentEntries = existingFeed?.matchedUsers ?? [];
 
       const activeEntries = currentEntries.filter(
         (entry) => entry.expiresAt > now && entry.isOpened === false,
-        //(entry) => entry.expiresAt > now,
       );
 
       if (activeEntries.length >= DAILY_MATCH_COUNT) {
@@ -294,12 +278,30 @@ export const generateDailyMatches = async () => {
       const excludedIds = [user._id, ...activeEntries.map((e) => e.targetId)];
       const slotsNeeded = DAILY_MATCH_COUNT - activeEntries.length;
 
+      const minAge = user.preferredAgeRange?.min || 18;
+      const maxAge = user.preferredAgeRange?.max || 100;
+      const minBirthDate = new Date();
+      minBirthDate.setFullYear(now.getFullYear() - maxAge);
+      const maxBirthDate = new Date();
+      maxBirthDate.setFullYear(now.getFullYear() - minAge);
+
       const targets = await User.aggregate([
         {
-          $match: {
-            _id: { $nin: excludedIds },
-            mbtiType: { $exists: true, $ne: null },
-            isDeleted: { $ne: true },
+          $geoNear: {
+            near: user.location,
+            distanceField: "distance",
+            maxDistance: (user.preferredDistance || 10) * 1609.34,
+            query: {
+              _id: { $nin: excludedIds },
+              mbtiType: { $exists: true, $ne: null },
+              isDeleted: { $ne: true },
+              gender:
+                user.preferredGender === "All"
+                  ? { $exists: true }
+                  : user.preferredGender,
+              birthDate: { $gte: minBirthDate, $lte: maxBirthDate },
+            },
+            spherical: true,
           },
         },
         { $sample: { size: slotsNeeded } },
@@ -311,7 +313,7 @@ export const generateDailyMatches = async () => {
 
       const newMatches = targets.map((target) => ({
         targetId: target._id,
-        synergyScore: calculateSynergy(user.mbtiType, target.mbtiType),
+        synergyScore: calculateSynergy(user.mbtiType!, target.mbtiType!),
         isOpened: false,
         recommendedAt: now,
         expiresAt,

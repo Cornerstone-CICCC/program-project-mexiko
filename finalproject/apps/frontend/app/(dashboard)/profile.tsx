@@ -39,6 +39,10 @@ const Profile = () => {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(
+    null,
+  );
+
   const editPath = user?.firebaseUid ? `/${user.firebaseUid}/edit` : "/edit";
 
   const fetchRooms = async () => {
@@ -67,6 +71,22 @@ const Profile = () => {
     }, []),
   );
 
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        lng: loc.coords.longitude,
+        lat: loc.coords.latitude,
+      });
+    })();
+  }, []);
+
   const getLocation = async () => {
     const userId = getSafeUserId();
     if (!userId) {
@@ -88,27 +108,23 @@ const Profile = () => {
 
       const { latitude, longitude } = locationData.coords;
 
-      if (latitude === 0 && longitude === 0) {
-        Alert.alert(
-          "Location Error",
-          "Failed to retrieve coordinates. Please check your device GPS settings.",
-        );
-        return;
-      }
-
       const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
       const address = geo?.[0];
-
       const city =
         address?.city || address?.district || address?.subregion || "";
       const region = address?.region || "";
-
       const locationString =
-        city && region
-          ? `${city}, ${region}`
-          : `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+        city && region ? `${city}, ${region}` : "Unknown Location";
 
-      await updateLocation(userId, locationString);
+      const locationPayload = {
+        type: "Point",
+        coordinates: [longitude, latitude],
+        address: locationString,
+      };
+
+      await updateLocation(userId, locationPayload);
+
+      //await updateLocation(userId, locationString);
     } catch (e) {
       console.error(e);
     } finally {
@@ -239,7 +255,7 @@ const Profile = () => {
     }
   };
 
-  const updateLocation = async (userId: string, location: string) => {
+  const updateLocation = async (userId: string, locationPayload: any) => {
     try {
       setIsSyncing(true);
       const response = await fetch(`${SERVER_URL}/users/${userId}`, {
@@ -247,23 +263,26 @@ const Profile = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userInfo: {
-            location: location,
+            location: locationPayload,
           },
         }),
       });
-      console.log("response", response);
+
       if (response.ok) {
-        setUser((prev: any) => ({
-          ...prev,
-          location: location,
-        }));
+        const updatedData = await response.json();
+
+        setUser({
+          ...updatedData,
+          location: {
+            ...updatedData.location,
+            address: locationPayload.address,
+          },
+        });
         console.log("✅ DB Update Success");
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
@@ -303,11 +322,17 @@ const Profile = () => {
 
     if (typeof user.location === "string") return user.location;
 
-    if (
-      user.location.type === "Point" &&
-      Array.isArray(user.location.coordinates)
-    ) {
-      return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+    if (typeof user.location === "object") {
+      if (user.location.address) {
+        return user.location.address;
+      }
+
+      if (
+        user.location.type === "Point" &&
+        Array.isArray(user.location.coordinates)
+      ) {
+        return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+      }
     }
 
     return "Set Location";
