@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
 
   leftWithToggle: {
-    paddingRight: 84, 
+    paddingRight: 84, // reserva espacio para el toggle
   },
 
   iconWrapper: {

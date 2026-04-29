@@ -16,10 +16,25 @@ import {
   getMatches,
   MatchUiItem,
   openMatchChat,
+  MatchFilters,
 } from "@/services/matchService";
 import { auth } from "@/config/firebase";
 import { API_ENDPOINTS } from "@/config/api";
 import { useRouter, useFocusEffect } from "expo-router";
+
+const GENDER_OPTIONS: Array<NonNullable<MatchFilters["gender"]>> = [
+  "All",
+  "Female",
+  "Male",
+  "Other",
+];
+
+const DISTANCE_OPTIONS: Array<{ label: string; value?: number }> = [
+  { label: "10 km", value: 10 },
+  { label: "25 km", value: 25 },
+  { label: "50 km", value: 50 },
+  { label: "Any", value: undefined },
+];
 
 export default function MatchesScreen() {
   const [matches, setMatches] = useState<MatchUiItem[]>([]);
@@ -27,55 +42,69 @@ export default function MatchesScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [myMbti, setMyMbti] = useState("ISTP");
+  const [selectedGender, setSelectedGender] =
+    useState<NonNullable<MatchFilters["gender"]>>("All");
+  const [selectedDistance, setSelectedDistance] = useState<number | undefined>(
+    undefined
+  );
 
   const router = useRouter();
 
-  const fetchMatches = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchMatches = useCallback(
+    async (filters?: MatchFilters) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const user = auth.currentUser;
+        const user = auth.currentUser;
 
-      if (!user) {
-        throw new Error("You need log-in.");
+        if (!user) {
+          throw new Error("You need log-in.");
+        }
+
+        const userResponse = await fetch(API_ENDPOINTS.USER(user.uid), {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const userData = await userResponse.json();
+
+        if (!userResponse.ok) {
+          throw new Error("Failed to load user info");
+        }
+
+        const currentMbti = userData.mbtiType || "ISTP";
+        setMyMbti(currentMbti);
+
+        const data = await getMatches(currentMbti, filters);
+
+        setMatches(data.filter((m) => !m.isOpened));
+      } catch (err: any) {
+        setError(err.message || "Failed to load matches");
+      } finally {
+        setLoading(false);
       }
-
-      const userResponse = await fetch(API_ENDPOINTS.USER(user.uid), {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const userData = await userResponse.json();
-
-      if (!userResponse.ok) {
-        throw new Error("Failed to load user info");
-      }
-
-      const currentMbti = userData.mbtiType || "ISTP";
-      setMyMbti(currentMbti);
-
-      const data = await getMatches(currentMbti);
-
-      setMatches(data.filter((m) => !m.isOpened));
-    } catch (err: any) {
-      setError(err.message || "Failed to load matches");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchMatches();
-  }, [fetchMatches]);
+    fetchMatches({
+      gender: selectedGender,
+      maxDistance: selectedDistance,
+    });
+  }, [fetchMatches, selectedGender, selectedDistance]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchMatches();
-    }, [fetchMatches])
+      fetchMatches({
+        gender: selectedGender,
+        maxDistance: selectedDistance,
+      });
+    }, [fetchMatches, selectedGender, selectedDistance])
   );
 
   const featured = matches.slice(0, 3);
@@ -88,6 +117,11 @@ export default function MatchesScreen() {
     } catch (err: any) {
       Alert.alert("Error", err.message);
     }
+  };
+
+  const handleResetFilters = () => {
+    setSelectedGender("All");
+    setSelectedDistance(undefined);
   };
 
   if (loading) {
@@ -125,8 +159,62 @@ export default function MatchesScreen() {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Matches are based on your profile preferences
+            New matches refresh every 24 hours
           </Text>
+        </View>
+
+        <View style={styles.filterCard}>
+          <View style={styles.filterHeader}>
+            <Text style={styles.filterTitle}>Filters</Text>
+
+            <Pressable onPress={handleResetFilters}>
+              <Text style={styles.resetText}>Reset</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.filterLabel}>Gender</Text>
+          <View style={styles.pillRow}>
+            {GENDER_OPTIONS.map((option) => {
+              const active = selectedGender === option;
+
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setSelectedGender(option)}
+                  style={[styles.pill, active && styles.pillActive]}
+                >
+                  <Text
+                    style={[styles.pillText, active && styles.pillTextActive]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.filterLabel, styles.filterSectionSpacing]}>
+            Distance
+          </Text>
+          <View style={styles.pillRow}>
+            {DISTANCE_OPTIONS.map((option) => {
+              const active = selectedDistance === option.value;
+
+              return (
+                <Pressable
+                  key={option.label}
+                  onPress={() => setSelectedDistance(option.value)}
+                  style={[styles.pill, active && styles.pillActive]}
+                >
+                  <Text
+                    style={[styles.pillText, active && styles.pillTextActive]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         {featured.length > 0 && (
@@ -139,6 +227,7 @@ export default function MatchesScreen() {
                 onPress={() => handleCardPress(item.matchId, item.targetUserId)}
               >
                 <FeaturedMatchCard
+                  key={item.id}
                   mbti={item.mbti}
                   score={item.score}
                   tags={item.tags}
@@ -160,6 +249,7 @@ export default function MatchesScreen() {
                 onPress={() => handleCardPress(item.matchId, item.targetUserId)}
               >
                 <CompactMatchCard
+                  key={item.id}
                   mbti={item.mbti}
                   score={item.score}
                   tags={item.tags}
@@ -173,7 +263,7 @@ export default function MatchesScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No matches found</Text>
             <Text style={styles.emptyText}>
-              Try updating your profile preferences or wait for the next daily refresh.
+              Try adjusting your filters or wait for the next daily refresh.
             </Text>
           </View>
         )}
@@ -208,13 +298,71 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   infoText: {
     textAlign: "center",
     color: "#6B7280",
     fontSize: 14,
     fontWeight: "500",
+  },
+  filterCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 24,
+  },
+  filterHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  resetText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6A11CB",
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6B7280",
+    marginBottom: 10,
+  },
+  filterSectionSpacing: {
+    marginTop: 14,
+  },
+  pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  pillActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  pillTextActive: {
+    color: "#FFFFFF",
   },
   sectionLabel: {
     fontSize: 12,
