@@ -30,24 +30,37 @@ export const getAllUsers = async () => await User.find();
 
 export const createUser = async (userData: any) => {
   try {
-    console.log("🔵 [SERVICE] Creating user in MongoDB...");
-
-    const userToCreate = {
+    console.log("🔵 Creating full user in MongoDB...");
+    console.log("backend userData", userData);
+    const newUser = new User({
       firebaseUid: userData.firebaseUid,
       email: userData.email,
       fullName: {
-        first: userData.fullName?.first || "Usuario",
+        first: userData.fullName?.first || "",
         last: userData.fullName?.last || "",
       },
-    };
 
-    const newUser = new User(userToCreate);
+      gender: userData.gender,
+      birthDate: userData.birthDate,
+      bio: userData.bio,
+      Interests: userData.Interests || [],
+
+      profileImage: userData.profileImage || "",
+      subImages: userData.subImages || [],
+
+      location: userData.location,
+      preferredDistance: userData.preferredDistance,
+      preferredAgeRange: userData.preferredAgeRange,
+      preferredGender: userData.preferredGender,
+      showLocationOnProfile: userData.showLocationOnProfile,
+    });
+
     const savedUser = await newUser.save();
 
-    console.log("✅ [SERVICE] User created with ID:", savedUser._id);
+    console.log("✅ User fully created:", savedUser._id);
     return savedUser;
   } catch (error) {
-    console.error("❌ [SERVICE] Error creating user:", error);
+    console.error("❌ Error creating user:", error);
     throw error;
   }
 };
@@ -69,20 +82,18 @@ export const updateUserInfo = async (idOrUid: string, updateData: any) => {
     "fullName",
     "mbtiType",
     "bio",
-    "hobbies",
     "profileImage",
     "location",
     "preferredAgeRange",
     "preferredDistance",
     "Interests",
-    "mbtiTestchecked",
-    "isSuspended",
     "birthDate",
     "preferredGender",
+    "mbtiTestchecked",
   ];
 
   console.log("id", id);
-  console.log("updateData", updateData);
+  console.log("backend updateData", updateData);
 
   //const actualData = updateData.userInfo ? updateData.userInfo : updateData;
   const actualData = updateData.userInfo || updateData;

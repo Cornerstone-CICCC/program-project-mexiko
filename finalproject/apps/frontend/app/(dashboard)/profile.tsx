@@ -49,7 +49,7 @@ const Profile = () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-      console.log("chat room response", response);
+      //console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -168,15 +168,25 @@ const Profile = () => {
       const data = await response.json();
 
       //setUser(response);
-      console.log("response", response);
+      //console.log("response", response);
       if (response.ok) {
+        if (
+          data.location &&
+          !data.location.address &&
+          data.location.coordinates
+        ) {
+          const [lng, lat] = data.location.coordinates;
+          const addressText = await getAddressFromCoords(lat, lng);
+          data.location.address = addressText;
+        }
+
         setUser(data);
         if (data.Interests) {
           setSelectedInterests(data.Interests);
         }
 
         if (data.profileImage) {
-          console.log("data.profileImage", data.profileImage);
+          //console.log("data.profileImage", data.profileImage);
           setImage(data.profileImage);
         }
         setSelectedInterests(data.Interests);
@@ -255,6 +265,20 @@ const Profile = () => {
     }
   };
 
+  const getAddressFromCoords = async (latitude: number, longitude: number) => {
+    try {
+      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geo?.[0]) {
+        const city = geo[0].city || geo[0].district || geo[0].region || "";
+        const country = geo[0].country || "";
+        return `${city}, ${country}`.trim() || "Unknown Location";
+      }
+    } catch (e) {
+      console.error("Reverse Geocode Error:", e);
+    }
+    return "Location Set";
+  };
+
   const updateLocation = async (userId: string, locationPayload: any) => {
     try {
       setIsSyncing(true);
@@ -319,7 +343,13 @@ const Profile = () => {
   //const locationText = user?.location;
   const locationText = (() => {
     if (!user?.location) return "Set Location";
-
+    // console.log(
+    //   "user.location",
+    //   user.location,
+    //   "type",
+    //   typeof user.location,
+    //   user.location.address,
+    // );
     if (typeof user.location === "string") return user.location;
 
     if (typeof user.location === "object") {
@@ -337,7 +367,7 @@ const Profile = () => {
 
     return "Set Location";
   })();
-  console.log("locationText", locationText);
+  //console.log("locationText", locationText);
 
   const getImageUrl = (path: string) => {
     if (!path) return null;

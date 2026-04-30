@@ -22,7 +22,7 @@ import { Modal, Pressable } from "react-native";
 interface Step2Data {
   gender: "Male" | "Female" | "Other" | "";
   birthDate: string;
-  interests: string[];
+  Interests: string[];
   bio: string;
   profileImage: string | null;
   subImages: string[];
@@ -61,7 +61,7 @@ export default function SignUpStep2() {
   const [formData, setFormData] = useState<Step2Data>({
     gender: "",
     birthDate: "",
-    interests: [],
+    Interests: [],
     bio: "",
     profileImage: null,
     subImages: [],
@@ -74,19 +74,19 @@ export default function SignUpStep2() {
   const [showPicker, setShowPicker] = useState(false);
 
   const handleAddInterest = () => {
-    if (selectedInterest && !formData.interests.includes(selectedInterest)) {
+    if (selectedInterest && !formData.Interests.includes(selectedInterest)) {
       setFormData({
         ...formData,
-        interests: [...formData.interests, selectedInterest],
+        Interests: [...formData.Interests, selectedInterest],
       });
       setSelectedInterest("");
     } else if (
       customInterest.trim() &&
-      !formData.interests.includes(customInterest.trim())
+      !formData.Interests.includes(customInterest.trim())
     ) {
       setFormData({
         ...formData,
-        interests: [...formData.interests, customInterest.trim()],
+        Interests: [...formData.Interests, customInterest.trim()],
       });
       setCustomInterest("");
       setShowCustomInput(false);
@@ -96,7 +96,7 @@ export default function SignUpStep2() {
   const handleRemoveInterest = (interest: string) => {
     setFormData({
       ...formData,
-      interests: formData.interests.filter((i) => i !== interest),
+      Interests: formData.Interests.filter((i) => i !== interest),
     });
   };
 
@@ -141,16 +141,16 @@ export default function SignUpStep2() {
   };
 
   const validateAndNext = () => {
-    console.log("========== VALIDATION START ==========");
-    console.log("1. Form Data received:", {
-      gender: formData.gender,
-      birthDate: formData.birthDate,
-      bioLength: formData.bio.length,
-      interestsCount: formData.interests.length,
-      hasProfileImage: !!formData.profileImage,
-      subImagesCount: formData.subImages.length,
-    });
-    console.log("2. Step1 Data:", step1Data);
+    // console.log("========== VALIDATION START ==========");
+    // console.log("1. Form Data received:", {
+    //   gender: formData.gender,
+    //   birthDate: formData.birthDate,
+    //   bioLength: formData.bio.length,
+    //   interestsCount: formData.Interests.length,
+    //   hasProfileImage: !!formData.profileImage,
+    //   subImagesCount: formData.subImages.length,
+    // });
+    // console.log("2. Step1 Data:", step1Data);
 
     // Validations with detailed logging
     if (!formData.gender) {
@@ -158,14 +158,14 @@ export default function SignUpStep2() {
       Alert.alert("Error", "Please select your gender");
       return;
     }
-    console.log("✅ Gender validation passed");
+    //console.log("✅ Gender validation passed");
 
     if (!formData.birthDate) {
       console.log("❌ Validation failed: Birth date empty");
       Alert.alert("Error", "Please enter your birth date");
       return;
     }
-    console.log("✅ Birth date exists");
+    //console.log("✅ Birth date exists");
 
     // Validate format date  DD/MM/YYYY
     const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
@@ -176,11 +176,11 @@ export default function SignUpStep2() {
       Alert.alert("Error", "Please use format DD/MM/YYYY");
       return;
     }
-    console.log("✅ Date format is valid");
+    //console.log("✅ Date format is valid");
 
     // Validate minimum age (18 years)
     const [day, month, year] = formData.birthDate.split("/");
-    console.log(`3. Parsed date - Day: ${day}, Month: ${month}, Year: ${year}`);
+    //console.log(`3. Parsed date - Day: ${day}, Month: ${month}, Year: ${year}`);
 
     const birthDate = new Date(
       parseInt(year),
@@ -192,12 +192,12 @@ export default function SignUpStep2() {
     const monthDiff = today.getMonth() - birthDate.getMonth();
     const dayDiff = today.getDate() - birthDate.getDate();
 
-    console.log(
-      `4. Age calculation - BirthDate: ${birthDate}, Today: ${today}`,
-    );
-    console.log(
-      `5. Calculated age: ${age}, MonthDiff: ${monthDiff}, DayDiff: ${dayDiff}`,
-    );
+    // console.log(
+    //   `4. Age calculation - BirthDate: ${birthDate}, Today: ${today}`,
+    // );
+    // console.log(
+    //   `5. Calculated age: ${age}, MonthDiff: ${monthDiff}, DayDiff: ${dayDiff}`,
+    // );
 
     let finalAge = age;
     if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
@@ -212,36 +212,38 @@ export default function SignUpStep2() {
       Alert.alert("Error", "You must be at least 18 years old");
       return;
     }
-    console.log(`✅ Age validation passed: User is ${finalAge} years old`);
+    //console.log(`✅ Age validation passed: User is ${finalAge} years old`);
 
     if (!formData.bio.trim()) {
       console.log("❌ Validation failed: Bio is empty");
       Alert.alert("Error", "Please tell us something about yourself");
       return;
     }
-    console.log(`✅ Bio exists: ${formData.bio.length} characters`);
+    //console.log(`✅ Bio exists: ${formData.bio.length} characters`);
 
-    if (formData.bio.length < 20) {
+    if (formData.bio.length < 10) {
       console.log(
-        `❌ Validation failed: Bio too short (${formData.bio.length}/20)`,
+        `❌ Validation failed: Bio too short (${formData.bio.length}/10)`,
       );
       Alert.alert("Error", "Bio must be at least 20 characters");
       return;
     }
-    console.log(`✅ Bio length validation passed`);
+    //console.log(`✅ Bio length validation passed`);
 
-    if (formData.interests.length === 0) {
+    //console.log("formData.", formData);
+
+    if (formData.Interests.length === 0) {
       console.log("❌ Validation failed: No interests selected");
       Alert.alert("Error", "Please add at least one interest");
       return;
     }
-    console.log(
-      `✅ Interests validation passed: ${formData.interests.length} interests selected`,
-    );
-    console.log(`   Interests: ${formData.interests.join(", ")}`);
+    // console.log(
+    //   `✅ Interests validation passed: ${formData.Interests.length} interests selected`,
+    // );
+    // console.log(`   Interests: ${formData.Interests.join(", ")}`);
 
     // Preparing data for navigation
-    console.log("========== PREPARING NAVIGATION ==========");
+    //console.log("========== PREPARING NAVIGATION ==========");
 
     let step1DataString: string, step2DataString: string;
     try {
@@ -290,13 +292,13 @@ export default function SignUpStep2() {
     step1DataString: string,
     step2DataString: string,
   ) => {
-    console.log("10. Executing navigation to /signupStep3");
-    console.log("11. Params being sent:", {
-      step1DataLength: step1DataString.length,
-      step2DataLength: step2DataString.length,
-      step1DataPreview: step1DataString.substring(0, 100),
-      step2DataPreview: step2DataString.substring(0, 100),
-    });
+    // console.log("10. Executing navigation to /signupStep3");
+    // console.log("11. Params being sent:", {
+    //   step1DataLength: step1DataString.length,
+    //   step2DataLength: step2DataString.length,
+    //   step1DataPreview: step1DataString.substring(0, 100),
+    //   step2DataPreview: step2DataString.substring(0, 100),
+    // });
 
     try {
       router.push({
@@ -315,7 +317,7 @@ export default function SignUpStep2() {
       );
     }
 
-    console.log("========== VALIDATION END ==========");
+    //console.log("========== VALIDATION END ==========");
   };
   const handleBack = () => {
     router.back();
@@ -532,9 +534,9 @@ export default function SignUpStep2() {
                   </Text>
 
                   {/* Selected Interests Tags */}
-                  {formData.interests.length > 0 && (
+                  {formData.Interests.length > 0 && (
                     <View className="flex-row flex-wrap gap-2 mb-3">
-                      {formData.interests.map((interest) => (
+                      {formData.Interests.map((interest) => (
                         <View
                           key={interest}
                           className="flex-row items-center bg-purple-100 rounded-full px-3 py-1"
@@ -605,10 +607,10 @@ export default function SignUpStep2() {
                         <TouchableOpacity
                           key={interest}
                           onPress={() => {
-                            if (!formData.interests.includes(interest)) {
+                            if (!formData.Interests.includes(interest)) {
                               setFormData({
                                 ...formData,
-                                interests: [...formData.interests, interest],
+                                Interests: [...formData.Interests, interest],
                               });
                             }
                           }}
@@ -657,7 +659,7 @@ export default function SignUpStep2() {
                     </View>
                   </ScrollView>
                 </View>
-*/}
+                */}
 
                 {/* Navigation Buttons */}
                 <View className="flex-row gap-3 mt-6">

@@ -7,41 +7,55 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Link } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { auth } from "../../config/firebase";
-import { useEffect, useState } from "react";
-import { signOut } from "firebase/auth";
+import { useCallback, useState } from "react";
 
 const { width } = Dimensions.get("window");
 
 export default function MBTIIndex() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
-  const [dbUser, setDbUser] = useState<any>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const checkUser = async () => {
+        try {
+          const user = auth.currentUser;
+          console.log("mbti index user:", user);
+          if (!user) return;
 
-  const fetchCurrentUserInfo = async (userId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/${userId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setDbUser(data);
-        if (data.mbtiTestchecked === true) {
-          router.replace("/(dashboard)/");
+          const res = await fetch(`${API_BASE_URL}/users/${user.uid}`);
+
+          const data = await res.json();
+
+          console.log("INDEX USER:", data);
+
+          if (data?.mbtiTestchecked === true) {
+            router.replace("/(dashboard)/");
+            return;
+          }
+
+          setLoading(false);
+        } catch (err) {
+          console.log("MBTI INDEX ERROR:", err);
+          setLoading(false);
         }
-      }
-    } catch (error) {
-      console.error("Not found user Infomation:", error);
-    }
-  };
+      };
 
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (user) {
-      fetchCurrentUserInfo(user.uid);
-    }
-  }, []);
+      checkUser();
+    }, []),
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.fullScreen}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.fullScreen}>
@@ -59,8 +73,8 @@ export default function MBTIIndex() {
             Your MBTI(Personality) Test
           </Text>
           <Text className="text-base text-slate-500 text-center leading-6">
-            Discover your MBTI and{"\n"}relationship style through simple
-            questions.
+            Discover your MBTI and{"\n"}
+            relationship style through simple questions.
           </Text>
         </View>
 
@@ -79,36 +93,7 @@ export default function MBTIIndex() {
           <Text className="text-slate-400 font-semibold underline">
             Go Back
           </Text>
-
-          <Link
-            href="../"
-            push
-            asChild
-            className="text-slate-400 font-semibold underline"
-          ></Link>
         </TouchableOpacity>
-
-        <View style={styles.backButton}>
-          <Link href="/" asChild>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={async () => {
-                try {
-                  await signOut(auth);
-                  console.log("Session cleared!");
-                  router.replace("/login");
-                } catch (error) {
-                  console.error("Sign out error:", error);
-                }
-              }}
-              style={styles.backButton}
-            >
-              <Text className="text-slate-400 font-semibold underline">
-                Reset Session & Go to Login
-              </Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
       </View>
 
       <SafeAreaView edges={["bottom"]} />
@@ -139,11 +124,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#A855F7",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
   },
   textSection: {
     alignItems: "center",
@@ -156,11 +136,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#9333ea",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
   },
   backButton: {
     marginTop: 24,

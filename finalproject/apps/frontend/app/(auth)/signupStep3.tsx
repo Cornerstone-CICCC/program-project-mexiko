@@ -147,17 +147,27 @@ export default function SignUpStep3() {
 
     setIsLoading(true);
 
+    const formatBirthDate = (dateStr: string) => {
+      const [day, month, year] = dateStr.split("/");
+      return new Date(`${year}-${month}-${day}`).toISOString();
+    };
+
+    // console.log("STEP2 RAW:", step2Data);
+    // console.log("PROFILE IMAGE:", step2Data?.profileImage);
+
     try {
       const completeUserData = {
-        name: step1Data?.name,
-        lastName: step1Data?.lastName,
+        fullName: {
+          first: step1Data?.fullName?.first,
+          last: step1Data?.fullName?.last,
+        },
         email: step1Data?.email,
         password: step1Data?.password,
 
         gender: step2Data?.gender,
-        birthDate: step2Data?.birthDate,
+        birthDate: formatBirthDate(step2Data?.birthDate),
         bio: step2Data?.bio,
-        interests: step2Data?.interests,
+        Interests: step2Data?.Interests,
         profileImage: step2Data?.profileImage,
         subImages: step2Data?.subImages,
 
@@ -174,26 +184,26 @@ export default function SignUpStep3() {
         showLocationOnProfile: preferences.showLocationOnProfile,
       };
 
-      console.log("Creating account with complete data:", completeUserData);
+      //console.log("Creating account with complete data:", completeUserData);
 
       const response = await authService.signUp(completeUserData);
 
-      console.log("Sign up response:", response);
+      //console.log("Sign up response:", response);
 
       if (response.isNewUser) {
         Alert.alert(
-          "✅ Account Created",
+          "Account Created",
           `Your account has been created successfully!\n\n` +
             `A verification email has been sent to:\n${step1Data?.email}\n\n` +
             `Please check your inbox (and spam folder) and click the verification link.`,
           [
             {
               text: "Continue",
-              onPress: () =>
-                router.push({
-                  pathname: "/verifyEmail",
-                  params: { email: step1Data?.email },
-                }),
+              // onPress: () =>
+              //   router.push({
+              //     pathname: "/verifyEmail",
+              //     params: { email: step1Data?.email },
+              //   }),
             },
           ],
         );
@@ -477,7 +487,6 @@ export default function SignUpStep3() {
               </View>
 
               {/* Summary Card */}
-              {/* Summary Card */}
               <View className="mt-4 p-4 bg-purple-50 rounded-xl">
                 <Text className="text-purple-800 font-semibold text-center mb-2">
                   Your Discovery Settings
@@ -532,7 +541,7 @@ export default function SignUpStep3() {
                     </View>
                   ) : (
                     <Text className="text-white font-semibold text-center text-lg">
-                      Create Account ✨
+                      Create Account
                     </Text>
                   )}
                 </TouchableOpacity>

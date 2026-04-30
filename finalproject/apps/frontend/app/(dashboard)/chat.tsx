@@ -75,7 +75,7 @@ const chat = () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-      console.log("chat room response", response);
+      //console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -103,7 +103,7 @@ const chat = () => {
     const socket = getSocket(currentUserId);
 
     socket.on("update_chat_list", (data) => {
-      console.log("Socket Data Received:", data);
+      //console.log("Socket Data Received:", data);
 
       setRooms((prevRooms) => {
         const roomIndex = prevRooms.findIndex((r) => r.roomId === data.roomId);
@@ -115,20 +115,21 @@ const chat = () => {
 
         const updatedRooms = [...prevRooms];
         const targetRoom = { ...updatedRooms[roomIndex] };
+        const me = currentUserId ? String(currentUserId) : null;
 
         const isNewMessageFromOther =
-          String(data.senderId) !== String(currentUserId);
-        const increment = data.incrementUnread === true;
+          me !== null && String(data.senderId) !== me;
 
+        // const increment =
+        //   data.incrementUnread === true && isNewMessageFromOther;
+        //console.log("front data.unreadCount", data.unreadCount);
         updatedRooms[roomIndex] = {
           ...targetRoom,
           lastMessage: data.lastMessage,
           lastMessageIsRead: data.isRead,
           lastMessageSenderId: data.senderId,
 
-          unreadCount: increment
-            ? (targetRoom.unreadCount || 0) + 1
-            : targetRoom.unreadCount || 0,
+          unreadCount: data.unreadCount ?? 0,
 
           updatedAt: data.updatedAt,
         };
@@ -141,7 +142,7 @@ const chat = () => {
     });
 
     socket.on("messages_read", ({ roomId, userId }) => {
-      if (userId !== currentUserId) {
+      if (String(userId) !== String(currentUserId)) {
         setRooms((prev) =>
           prev.map((r) =>
             r.roomId === roomId ? { ...r, lastMessageIsRead: true } : r,
@@ -161,7 +162,7 @@ const chat = () => {
     socket.on(
       "user_status_changed",
       (data: { userId: string; status: string; lastLogin: string }) => {
-        console.log("📡 Status Update Received:", data);
+        //console.log("📡 Status Update Received:", data);
 
         setRooms((prevRooms) => {
           return prevRooms.map((room) => {
@@ -200,7 +201,7 @@ const chat = () => {
         targetId: testUserObjectId,
         matchId: mockMatchId,
       });
-      console.log("createTestChatRoom response", response);
+      //console.log("createTestChatRoom response", response);
       if (response.data) {
         Alert.alert("Success", "Test chat room has been created.");
         fetchRooms();
@@ -213,11 +214,11 @@ const chat = () => {
 
   const createTripleTestRooms = async () => {
     try {
-      const myId = "CFYJpRsHtafu8TKEmIxCjeygTSC2"; // Reference Account (Me)
+      const myId = "4GzzMYQMEdNvfMimeEAIqIEqjKD2"; // Reference Account (Me)
       const targetIds = [
-        "uCgN2uEfq1ZgvTAYqQ60iyVxK4u1",
-        "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
-        "qxLtr5RqApbDDBvr5OTifLA70P33",
+        "69f1a4ab4554e6e31aace52a",
+        // "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
+        // "qxLtr5RqApbDDBvr5OTifLA70P33",
       ];
 
       for (const targetId of targetIds) {
@@ -225,10 +226,10 @@ const chat = () => {
           targetId: targetId, // Recipient
           matchId: myId, // Requester (Me)
         });
-        console.log(
-          `Chat room created successfully with: ${targetId}`,
-          response.data,
-        );
+        // console.log(
+        //   `Chat room created successfully with: ${targetId}`,
+        //   response.data,
+        // );
       }
 
       Alert.alert("Success", "Three test chat rooms have been created.");
@@ -362,14 +363,14 @@ const chat = () => {
 
               const other = (room as any).otherParticipant;
               const me = (room as any).me;
-              console.log("other:::", other);
+              //console.log("other:::", other);
 
               if (!other) return null;
 
               //const isRevealed = other.isRevealed;
               //const isRevealed = (room as any).isRevealed;
               const isRevealed = room.isRevealed || false;
-              console.log("isRevealed::", isRevealed);
+              //console.log("isRevealed::", isRevealed);
 
               const otherParticipant = room.participants.find(
                 (p) => String(p.firebaseUid) !== String(currentUserId),
@@ -394,14 +395,14 @@ const chat = () => {
                 ? getRemainingTime(other.lastLogin)
                 : "OFF";
               const isOnline = other.isOnline === true;
-              console.log("isOnline", isOnline);
-              console.log(
-                `Room: ${room.roomId}, LastLogin: ${other.lastLogin}, Result: ${displayTime}`,
-              );
+              // console.log("isOnline", isOnline);
+              // console.log(
+              //   `Room: ${room.roomId}, LastLogin: ${other.lastLogin}, Result: ${displayTime}`,
+              // );
 
               const displayName = isRevealed
                 ? `${other.fullName.first} ${other.fullName.last || ""} (${other.mbtiType})`
-                : `${other.fullName.first} ${other.fullName.last || ""} (${other.mbtiType})`; // temporary
+                : other.mbtiType; // temporary
               //: other.mbtiType;
 
               const targetMbti =
@@ -411,10 +412,10 @@ const chat = () => {
 
               const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
 
-              console.log("console.log(room.participants)", room.participants);
+              //console.log("console.log(room.participants)", room.participants);
 
               const synergyScore = calculateSynergy(myMbti, other.mbtiType);
-              console.log("other", other);
+              //console.log("other", other);
               return (
                 <Pressable
                   key={room._id}

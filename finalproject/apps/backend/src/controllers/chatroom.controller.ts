@@ -137,10 +137,10 @@ export const postMessage = async (req: Request, res: Response) => {
       isRead: false,
     });
 
-    if (isRecipientPresent) {
-      newMessage.isRead = true;
-      await newMessage.save();
-    }
+    // if (isRecipientPresent) {
+    //   newMessage.isRead = true;
+    //   await newMessage.save();
+    // }
 
     if (io) {
       io.to(roomId).emit("receive_message", newMessage);

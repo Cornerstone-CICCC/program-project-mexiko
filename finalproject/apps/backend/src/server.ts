@@ -17,6 +17,7 @@ import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
 import { User } from "./models/user.model";
+import { Message } from "./models/message.model";
 
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
@@ -100,6 +101,29 @@ io.on("connection", (socket) => {
     onlineUsers.set(userId, socket.id);
     updateUserStatus(userId, true);
   }
+
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
+    console.log(`✅ User joined room: ${roomId}`);
+  });
+
+  socket.on("send_message", async ({ roomId, message, senderId }) => {
+    socket.to(roomId).emit("receive_message", message);
+
+    const unreadCount = await Message.countDocuments({
+      chatRoomId: roomId,
+      senderId: { $ne: senderId },
+      isRead: false,
+    });
+
+    io.emit("update_chat_list", {
+      roomId,
+      lastMessage: message.content,
+      updatedAt: new Date(),
+      senderId,
+      unreadCount,
+    });
+  });
 
   socket.on("ping_online", async () => {
     console.log(`🔥 PING RECEIVED FROM: ${userId}`);

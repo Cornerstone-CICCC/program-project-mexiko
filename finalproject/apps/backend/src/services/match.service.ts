@@ -335,3 +335,72 @@ export const generateDailyMatches = async () => {
     console.error("❌ Error in generateDailyMatches:", error);
   }
 };
+
+export const generateMatchesForNewUser = async (firebaseUid: string) => {
+  const user = await getUserByFirebaseUid(firebaseUid);
+  const now = new Date();
+
+  const coords = user.location?.coordinates;
+  if (!Array.isArray(coords) || (coords[0] === 0 && coords[1] === 0)) {
+    console.log("❌ No location → cannot generate matches");
+    return [];
+  }
+
+  const minAge = user.preferredAgeRange?.min || (18 as number);
+  const maxAge = user.preferredAgeRange?.max || (100 as number);
+
+  const minBirthDate = new Date();
+  minBirthDate.setFullYear(now.getFullYear() - maxAge);
+
+  const maxBirthDate = new Date();
+  maxBirthDate.setFullYear(now.getFullYear() - minAge);
+
+  const targets = await User.aggregate([
+    {
+      $geoNear: {
+        near: user.location,
+        distanceField: "distance",
+        //maxDistance: (user.preferredDistance || 10) * 1609.34,
+        query: {
+          _id: { $ne: user._id },
+          mbtiType: { $exists: true, $ne: null },
+          isDeleted: { $ne: true },
+          gender:
+            user.preferredGender === "All"
+              ? { $exists: true }
+              : user.preferredGender,
+          birthDate: { $gte: minBirthDate, $lte: maxBirthDate },
+        },
+        spherical: true,
+      },
+    },
+    { $sample: { size: DAILY_MATCH_COUNT } },
+  ]);
+
+  if (targets.length === 0) {
+    console.log("❌ No targets found");
+    return [];
+  }
+
+  const expiresAt = new Date(now.getTime() + RECOMMENDATION_TTL_MS);
+
+  const newMatches = targets.map((target) => ({
+    targetId: target._id,
+    synergyScore: calculateSynergy(user.mbtiType!, target.mbtiType!),
+    isOpened: false,
+    recommendedAt: now,
+    expiresAt,
+  }));
+
+  const matchFeed = await Match.findOneAndUpdate(
+    { userId: user._id },
+    {
+      $set: { matchedUsers: newMatches },
+    },
+    { upsert: true, new: true },
+  );
+
+  console.log("✅ Matches created for new user");
+  console.log("matchFeed", matchFeed);
+  return matchFeed;
+};

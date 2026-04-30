@@ -30,7 +30,7 @@ const result = () => {
       const data = await response.json();
       if (response.ok) {
         setDbUser(data);
-        if (data.mbtiTestchecked === true) {
+        if (data?.mbtiTestchecked === true) {
           router.replace("/(dashboard)/");
         }
       }
@@ -41,6 +41,7 @@ const result = () => {
 
   // connect db
   const syncMbtiToBackend = async (userId: string, selectedMbti: string) => {
+    console.log("result page userId", userId);
     try {
       setIsSyncing(true);
       const response = await fetch(`http://localhost:3500/users/${userId}`, {
@@ -53,7 +54,7 @@ const result = () => {
           },
         }),
       });
-      //console.log("response", response);
+      console.log("result response", response);
       if (!response.ok) {
         throw new Error("Failed to update MBTI on server");
       }
@@ -67,13 +68,61 @@ const result = () => {
     }
   };
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   const user = auth.currentUser;
+  //   if (user) {
+  //     syncMbtiToBackend(user.uid, mbti);
+  //     fetchCurrentUserInfo(user.uid);
+  //   }
+  // }, [mbti]);
+
+  // useEffect(() => {
+  //   const user = auth.currentUser;
+  //   if (!user) return;
+
+  //   const saveMbti = async () => {
+  //     try {
+  //       setIsSyncing(true);
+
+  //       await fetch(`http://localhost:3500/users/${user.uid}`, {
+  //         method: "PATCH",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           mbtiType: mbti,
+  //           mbtiTestchecked: true,
+  //         }),
+  //       });
+
+  //       console.log("✅ MBTI saved");
+
+  //       router.replace("/(dashboard)/");
+  //     } catch (e) {
+  //       console.log("❌ error:", e);
+  //       Alert.alert("Error", "Failed to save MBTI");
+  //     } finally {
+  //       setIsSyncing(false);
+  //     }
+  //   };
+
+  //   saveMbti();
+  // }, [mbti]);
+
+  const handleComplete = async () => {
     const user = auth.currentUser;
-    if (user) {
-      syncMbtiToBackend(user.uid, mbti);
-      fetchCurrentUserInfo(user.uid);
+    if (!user) return;
+
+    setIsSyncing(true);
+
+    try {
+      await syncMbtiToBackend(user.uid, mbti);
+
+      router.replace("/(dashboard)");
+    } catch (e) {
+      Alert.alert("Error", "Failed to save MBTI result");
+    } finally {
+      setIsSyncing(false);
     }
-  }, [mbti]);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
@@ -126,7 +175,7 @@ const result = () => {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => router.push("/")}
+              onPress={handleComplete}
               style={styles.startButton}
             >
               <Text className="text-white text-xl font-bold">

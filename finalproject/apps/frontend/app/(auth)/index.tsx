@@ -68,6 +68,7 @@ export default function Home() {
         </View>
 
         {/* Bottom links */}
+        {/*
         <View className="w-full max-w-sm flex-row justify-between pt-4">
           <TouchableOpacity className="active:opacity-70">
             <Link href="/(dashboard)/" asChild>
@@ -87,6 +88,7 @@ export default function Home() {
             <Text className="text-white/60 text-sm font-medium">Admin</Text>
           </TouchableOpacity>
         </View>
+        */}
       </View>
     </View>
   );
