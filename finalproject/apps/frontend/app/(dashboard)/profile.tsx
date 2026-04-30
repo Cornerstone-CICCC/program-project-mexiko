@@ -39,13 +39,17 @@ const Profile = () => {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(
+    null,
+  );
+
   const editPath = user?.firebaseUid ? `/${user.firebaseUid}/edit` : "/edit";
 
   const fetchRooms = async () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-      console.log("chat room response", response);
+      //console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -66,6 +70,22 @@ const Profile = () => {
       fetchRooms();
     }, []),
   );
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        lng: loc.coords.longitude,
+        lat: loc.coords.latitude,
+      });
+    })();
+  }, []);
 
   const getLocation = async () => {
     const userId = getSafeUserId();
@@ -88,27 +108,23 @@ const Profile = () => {
 
       const { latitude, longitude } = locationData.coords;
 
-      if (latitude === 0 && longitude === 0) {
-        Alert.alert(
-          "Location Error",
-          "Failed to retrieve coordinates. Please check your device GPS settings.",
-        );
-        return;
-      }
-
       const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
       const address = geo?.[0];
-
       const city =
         address?.city || address?.district || address?.subregion || "";
       const region = address?.region || "";
-
       const locationString =
-        city && region
-          ? `${city}, ${region}`
-          : `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+        city && region ? `${city}, ${region}` : "Unknown Location";
 
-      await updateLocation(userId, locationString);
+      const locationPayload = {
+        type: "Point",
+        coordinates: [longitude, latitude],
+        address: locationString,
+      };
+
+      await updateLocation(userId, locationPayload);
+
+      //await updateLocation(userId, locationString);
     } catch (e) {
       console.error(e);
     } finally {
@@ -152,15 +168,25 @@ const Profile = () => {
       const data = await response.json();
 
       //setUser(response);
-      console.log("response", response);
+      //console.log("response", response);
       if (response.ok) {
+        if (
+          data.location &&
+          !data.location.address &&
+          data.location.coordinates
+        ) {
+          const [lng, lat] = data.location.coordinates;
+          const addressText = await getAddressFromCoords(lat, lng);
+          data.location.address = addressText;
+        }
+
         setUser(data);
         if (data.Interests) {
           setSelectedInterests(data.Interests);
         }
 
         if (data.profileImage) {
-          console.log("data.profileImage", data.profileImage);
+          //console.log("data.profileImage", data.profileImage);
           setImage(data.profileImage);
         }
         setSelectedInterests(data.Interests);
@@ -239,7 +265,21 @@ const Profile = () => {
     }
   };
 
-  const updateLocation = async (userId: string, location: string) => {
+  const getAddressFromCoords = async (latitude: number, longitude: number) => {
+    try {
+      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geo?.[0]) {
+        const city = geo[0].city || geo[0].district || geo[0].region || "";
+        const country = geo[0].country || "";
+        return `${city}, ${country}`.trim() || "Unknown Location";
+      }
+    } catch (e) {
+      console.error("Reverse Geocode Error:", e);
+    }
+    return "Location Set";
+  };
+
+  const updateLocation = async (userId: string, locationPayload: any) => {
     try {
       setIsSyncing(true);
       const response = await fetch(`${SERVER_URL}/users/${userId}`, {
@@ -247,23 +287,26 @@ const Profile = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userInfo: {
-            location: location,
+            location: locationPayload,
           },
         }),
       });
-      console.log("response", response);
+
       if (response.ok) {
-        setUser((prev: any) => ({
-          ...prev,
-          location: location,
-        }));
+        const updatedData = await response.json();
+
+        setUser({
+          ...updatedData,
+          location: {
+            ...updatedData.location,
+            address: locationPayload.address,
+          },
+        });
         console.log("✅ DB Update Success");
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
@@ -300,19 +343,31 @@ const Profile = () => {
   //const locationText = user?.location;
   const locationText = (() => {
     if (!user?.location) return "Set Location";
-
+    // console.log(
+    //   "user.location",
+    //   user.location,
+    //   "type",
+    //   typeof user.location,
+    //   user.location.address,
+    // );
     if (typeof user.location === "string") return user.location;
 
-    if (
-      user.location.type === "Point" &&
-      Array.isArray(user.location.coordinates)
-    ) {
-      return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+    if (typeof user.location === "object") {
+      if (user.location.address) {
+        return user.location.address;
+      }
+
+      if (
+        user.location.type === "Point" &&
+        Array.isArray(user.location.coordinates)
+      ) {
+        return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+      }
     }
 
     return "Set Location";
   })();
-  console.log("locationText", locationText);
+  //console.log("locationText", locationText);
 
   const getImageUrl = (path: string) => {
     if (!path) return null;

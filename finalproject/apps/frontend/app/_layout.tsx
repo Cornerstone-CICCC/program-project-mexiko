@@ -8,6 +8,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import "./global.css";
 import Toast from "react-native-toast-message";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Platform } from "react-native";
 
 export const unstable_settings = {
   anchor: "(tabs)",

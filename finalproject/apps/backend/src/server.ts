@@ -17,6 +17,7 @@ import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
 import { User } from "./models/user.model";
+import { Message } from "./models/message.model";
 
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
@@ -39,7 +40,7 @@ console.log("✅ Variables de entorno verificadas");
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
-cron.schedule("10 00 * * *", async () => {
+cron.schedule("00 08 * * *", async () => {
   // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
@@ -94,12 +95,35 @@ const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
   const userId = socket.handshake.auth.userId;
-  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`); // <- 추가
+  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`);
 
   if (userId) {
     onlineUsers.set(userId, socket.id);
     updateUserStatus(userId, true);
   }
+
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
+    console.log(`✅ User joined room: ${roomId}`);
+  });
+
+  socket.on("send_message", async ({ roomId, message, senderId }) => {
+    socket.to(roomId).emit("receive_message", message);
+
+    const unreadCount = await Message.countDocuments({
+      chatRoomId: roomId,
+      senderId: { $ne: senderId },
+      isRead: false,
+    });
+
+    io.emit("update_chat_list", {
+      roomId,
+      lastMessage: message.content,
+      updatedAt: new Date(),
+      senderId,
+      unreadCount,
+    });
+  });
 
   socket.on("ping_online", async () => {
     console.log(`🔥 PING RECEIVED FROM: ${userId}`);

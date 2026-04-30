@@ -21,7 +21,7 @@ const router = Router();
 
 // Auth
 router.post("/login", userController.login);
-router.post("/signup", userController.signup);
+router.post("/signup", upload.single("profileImage"), userController.signup);
 router.post("/logout", userController.logout);
 
 // Session

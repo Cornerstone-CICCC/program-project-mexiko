@@ -1,162 +1,165 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getUsers } from '../services/userService'
+import { useEffect, useMemo, useState } from "react";
+import { getUsers } from "../services/userService";
 
 interface FullName {
-  first?: string
-  last?: string
+  first?: string;
+  last?: string;
 }
 
 interface UserItem {
-  _id?: string
-  id?: string
-  email?: string
-  isAdmin?: boolean
-  isSuspended?: boolean
-  mbtiType?: string
-  fullName?: FullName
-  bio?: string
-  Interests?: string[]
-  keywords?: string[]
-  reportedCount?: number
-  gender?: string
-  birthDate?: string | null
-  preferredDistance?: number
-  preferredGender?: string
+  _id?: string;
+  id?: string;
+  email?: string;
+  isAdmin?: boolean;
+  isSuspended?: boolean;
+  mbtiType?: string;
+  fullName?: FullName;
+  bio?: string;
+  Interests?: string[];
+  keywords?: string[];
+  reportedCount?: number;
+  gender?: string;
+  birthDate?: string | null;
+  preferredDistance?: number;
+  preferredGender?: string;
 }
 
-type SortKey = 'name' | 'email' | 'mbti' | 'suspended'
-type SortDirection = 'asc' | 'desc'
+type SortKey = "name" | "email" | "mbti" | "suspended";
+type SortDirection = "asc" | "desc";
 
-const USERS_PER_PAGE = 20
+const USERS_PER_PAGE = 20;
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null)
-  const [sortKey, setSortKey] = useState<SortKey>('name')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const getUserDisplayName = (user: UserItem) => {
     const fullName = [user.fullName?.first, user.fullName?.last]
       .filter(Boolean)
-      .join(' ')
-      .trim()
+      .join(" ")
+      .trim();
 
-    return fullName || 'No name'
-  }
+    return fullName || "No name";
+  };
 
   const getUserMbti = (user: UserItem) => {
-    if (!user.mbtiType || user.mbtiType === 'NOT_SPECIFIED') return '-'
-    return user.mbtiType
-  }
+    if (!user.mbtiType || user.mbtiType === "NOT_SPECIFIED") return "-";
+    return user.mbtiType;
+  };
 
   const getUserInterests = (user: UserItem) => {
-    return user.Interests?.length ? user.Interests.join(', ') : 'No interests'
-  }
+    return user.Interests?.length ? user.Interests.join(", ") : "No interests";
+  };
 
   const getUserKeywords = (user: UserItem) => {
-    return user.keywords?.length ? user.keywords.join(', ') : 'No keywords'
-  }
+    return user.keywords?.length ? user.keywords.join(", ") : "No keywords";
+  };
 
   const getUserBirthDate = (user: UserItem) => {
-    if (!user.birthDate) return '-'
-    return new Date(user.birthDate).toLocaleDateString()
-  }
+    if (!user.birthDate) return "-";
+    return new Date(user.birthDate).toLocaleDateString();
+  };
 
   const getUserPreferredDistance = (user: UserItem) => {
-    if (user.preferredDistance === undefined || user.preferredDistance === null) {
-      return '-'
+    if (
+      user.preferredDistance === undefined ||
+      user.preferredDistance === null
+    ) {
+      return "-";
     }
 
-    return `${user.preferredDistance} km`
-  }
+    return `${user.preferredDistance} km`;
+  };
 
   const getSuspendedLabel = (user: UserItem) => {
-    return user.isSuspended ? 'Suspended' : 'Active'
-  }
+    return user.isSuspended ? "Suspended" : "Active";
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-      return
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
     }
 
-    setSortKey(key)
-    setSortDirection('asc')
-  }
+    setSortKey(key);
+    setSortDirection("asc");
+  };
 
   const getSortIndicator = (key: SortKey) => {
-    if (sortKey !== key) return '↕'
-    return sortDirection === 'asc' ? '↑' : '↓'
-  }
+    if (sortKey !== key) return "↕";
+    return sortDirection === "asc" ? "↑" : "↓";
+  };
 
   const loadUsers = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const data = await getUsers()
-      setUsers(Array.isArray(data) ? data : [])
+      const data = await getUsers();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err)
-      setError('Could not load users.')
+      console.error(err);
+      setError("Could not load users.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    void loadUsers()
-  }, [])
+    void loadUsers();
+  }, []);
 
   const sortedUsers = useMemo(() => {
-    const usersCopy = [...users]
+    const usersCopy = [...users];
 
     usersCopy.sort((a, b) => {
-      let valueA = ''
-      let valueB = ''
+      let valueA = "";
+      let valueB = "";
 
-      if (sortKey === 'name') {
-        valueA = getUserDisplayName(a).toLowerCase()
-        valueB = getUserDisplayName(b).toLowerCase()
+      if (sortKey === "name") {
+        valueA = getUserDisplayName(a).toLowerCase();
+        valueB = getUserDisplayName(b).toLowerCase();
       }
 
-      if (sortKey === 'email') {
-        valueA = (a.email || '').toLowerCase()
-        valueB = (b.email || '').toLowerCase()
+      if (sortKey === "email") {
+        valueA = (a.email || "").toLowerCase();
+        valueB = (b.email || "").toLowerCase();
       }
 
-      if (sortKey === 'mbti') {
-        valueA = getUserMbti(a).toLowerCase()
-        valueB = getUserMbti(b).toLowerCase()
+      if (sortKey === "mbti") {
+        valueA = getUserMbti(a).toLowerCase();
+        valueB = getUserMbti(b).toLowerCase();
       }
 
-      if (sortKey === 'suspended') {
-        valueA = getSuspendedLabel(a).toLowerCase()
-        valueB = getSuspendedLabel(b).toLowerCase()
+      if (sortKey === "suspended") {
+        valueA = getSuspendedLabel(a).toLowerCase();
+        valueB = getSuspendedLabel(b).toLowerCase();
       }
 
-      const comparison = valueA.localeCompare(valueB)
+      const comparison = valueA.localeCompare(valueB);
 
-      return sortDirection === 'asc' ? comparison : -comparison
-    })
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
 
-    return usersCopy
-  }, [users, sortKey, sortDirection])
+    return usersCopy;
+  }, [users, sortKey, sortDirection]);
 
-  const totalPages = Math.ceil(sortedUsers.length / USERS_PER_PAGE)
+  const totalPages = Math.ceil(sortedUsers.length / USERS_PER_PAGE);
 
   const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * USERS_PER_PAGE
-    return sortedUsers.slice(start, start + USERS_PER_PAGE)
-  }, [sortedUsers, currentPage])
+    const start = (currentPage - 1) * USERS_PER_PAGE;
+    return sortedUsers.slice(start, start + USERS_PER_PAGE);
+  }, [sortedUsers, currentPage]);
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [sortKey, sortDirection])
+    setCurrentPage(1);
+  }, [sortKey, sortDirection]);
 
   return (
     <>
@@ -187,44 +190,44 @@ export default function UsersPage() {
                     <th className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => handleSort('name')}
+                        onClick={() => handleSort("name")}
                         className="inline-flex items-center gap-2 transition hover:text-slate-700"
                       >
                         <span>Name</span>
-                        <span>{getSortIndicator('name')}</span>
+                        <span>{getSortIndicator("name")}</span>
                       </button>
                     </th>
 
                     <th className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => handleSort('email')}
+                        onClick={() => handleSort("email")}
                         className="inline-flex items-center gap-2 transition hover:text-slate-700"
                       >
                         <span>Email</span>
-                        <span>{getSortIndicator('email')}</span>
+                        <span>{getSortIndicator("email")}</span>
                       </button>
                     </th>
 
                     <th className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => handleSort('mbti')}
+                        onClick={() => handleSort("mbti")}
                         className="inline-flex items-center gap-2 transition hover:text-slate-700"
                       >
                         <span>MBTI</span>
-                        <span>{getSortIndicator('mbti')}</span>
+                        <span>{getSortIndicator("mbti")}</span>
                       </button>
                     </th>
 
                     <th className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => handleSort('suspended')}
+                        onClick={() => handleSort("suspended")}
                         className="inline-flex items-center gap-2 transition hover:text-slate-700"
                       >
                         <span>Suspended</span>
-                        <span>{getSortIndicator('suspended')}</span>
+                        <span>{getSortIndicator("suspended")}</span>
                       </button>
                     </th>
                   </tr>
@@ -242,7 +245,7 @@ export default function UsersPage() {
                       </td>
 
                       <td className="px-6 py-5 text-slate-600">
-                        {user.email || '-'}
+                        {user.email || "-"}
                       </td>
 
                       <td className="px-6 py-5 text-slate-600">
@@ -270,19 +273,56 @@ export default function UsersPage() {
             </div>
 
             <div className="mt-6 flex items-center justify-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    page === currentPage
-                      ? 'bg-[var(--color-brand)] text-white'
-                      : 'bg-slate-100 hover:bg-slate-200'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              <button
+                onClick={() =>
+                  setCurrentPage(
+                    Math.max(1, Math.floor((currentPage - 1) / 10) * 10),
+                  )
+                }
+                disabled={currentPage <= 10}
+                className="rounded-lg px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 disabled:opacity-50"
+              >
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  const currentGroup = Math.floor((currentPage - 1) / 10);
+                  const start = currentGroup * 10 + 1;
+                  const end = start + 9;
+                  return page >= start && page <= end;
+                })
+                .map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`rounded-lg px-3 py-1 text-sm ${
+                      page === currentPage
+                        ? "bg-[var(--color-brand)] text-white"
+                        : "bg-slate-100 hover:bg-slate-200"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+              <button
+                onClick={() =>
+                  setCurrentPage(
+                    Math.min(
+                      totalPages,
+                      Math.floor((currentPage - 1) / 10 + 1) * 10 + 1,
+                    ),
+                  )
+                }
+                disabled={
+                  Math.floor((currentPage - 1) / 10) ===
+                  Math.floor((totalPages - 1) / 10)
+                }
+                className="rounded-lg px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 disabled:opacity-50"
+              >
+                Next
+              </button>
             </div>
           </>
         )}
@@ -330,7 +370,7 @@ export default function UsersPage() {
                   Email
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900">
-                  {selectedUser.email || '-'}
+                  {selectedUser.email || "-"}
                 </p>
               </div>
 
@@ -348,7 +388,7 @@ export default function UsersPage() {
                   Gender
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900">
-                  {selectedUser.gender || '-'}
+                  {selectedUser.gender || "-"}
                 </p>
               </div>
 
@@ -357,7 +397,7 @@ export default function UsersPage() {
                   Admin Status
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900">
-                  {selectedUser.isAdmin ? 'Yes' : 'No'}
+                  {selectedUser.isAdmin ? "Yes" : "No"}
                 </p>
               </div>
 
@@ -366,7 +406,7 @@ export default function UsersPage() {
                   Suspended Status
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900">
-                  {selectedUser.isSuspended ? 'Suspended' : 'Active'}
+                  {selectedUser.isSuspended ? "Suspended" : "Active"}
                 </p>
               </div>
 
@@ -393,7 +433,7 @@ export default function UsersPage() {
                   Preferred Gender
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900">
-                  {selectedUser.preferredGender || '-'}
+                  {selectedUser.preferredGender || "-"}
                 </p>
               </div>
 
@@ -411,7 +451,7 @@ export default function UsersPage() {
                   Bio
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
-                  {selectedUser.bio || 'No bio provided.'}
+                  {selectedUser.bio || "No bio provided."}
                 </p>
               </div>
 
@@ -437,5 +477,5 @@ export default function UsersPage() {
         </div>
       ) : null}
     </>
-  )
+  );
 }

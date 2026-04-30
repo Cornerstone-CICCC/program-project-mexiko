@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
 import { User } from "../models/user.model";
+import * as matchService from "../services/match.service";
 
 // delete later
 export const createUserDev = async (req: Request, res: Response) => {
@@ -134,9 +135,29 @@ export const getSessionMe = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { userInfo, idToken } = req.body;
+    const { idToken } = req.body;
+
+    const userInfo =
+      typeof req.body.userInfo === "string"
+        ? JSON.parse(req.body.userInfo)
+        : req.body.userInfo;
+    let parsedUserInfo = userInfo;
+
+    if (typeof userInfo === "string") {
+      parsedUserInfo = JSON.parse(userInfo);
+    }
     const decodedToken = await userService.verifyFirebaseToken(idToken);
     const email = decodedToken.email || userInfo.email;
+
+    let profileImageName = userInfo.profileImage || "";
+
+    console.log("signup req.file", req.file);
+
+    if (req.file) {
+      profileImageName = req.file.filename;
+    } else if (profileImageName.startsWith("file://")) {
+      profileImageName = "";
+    }
 
     // find firebaseUid first
     let user = await userService.findUser(decodedToken.uid);
@@ -150,16 +171,17 @@ export const signup = async (req: Request, res: Response) => {
 
     // If not found by UID, try email (for users created before Firebase integration)
     user = await userService.findUserByEmail(email);
-
     if (user) {
-      // Update existing user with firebaseUid
       user.firebaseUid = decodedToken.uid;
       await user.save();
 
-      return res.status(200).json({
-        isNewUser: false,
-        user: user,
-        message: "User found by email and linked to Firebase UID.",
+      req.session.userId = user.firebaseUid;
+      return req.session.save(() => {
+        res.status(200).json({
+          isNewUser: false,
+          user: user,
+          message: "User found by email and linked to Firebase UID.",
+        });
       });
     }
 
@@ -168,10 +190,28 @@ export const signup = async (req: Request, res: Response) => {
       firebaseUid: decodedToken.uid,
       email: email,
       fullName: userInfo.fullName || {
-        first: userInfo.name || "User",
-        last: "",
+        first: userInfo.fullName?.first ?? "",
+        last: userInfo.fullName?.last ?? "",
       },
+
+      gender: userInfo.gender,
+      birthDate: userInfo.birthDate,
+      bio: userInfo.bio,
+      Interests: userInfo.Interests || [],
+
+      profileImage: profileImageName || "",
+      subImages: userInfo.subImages || [],
+
+      location: userInfo.location,
+      preferredDistance: userInfo.preferredDistance,
+      preferredAgeRange: userInfo.preferredAgeRange,
+      preferredGender: userInfo.preferredGender,
+      showLocationOnProfile: userInfo.showLocationOnProfile,
     });
+
+    await matchService.generateMatchesForNewUser(newUser.firebaseUid);
+
+    req.session.userId = newUser.firebaseUid;
 
     res.status(201).json({
       isNewUser: true,
@@ -253,14 +293,12 @@ export const updateUser = async (req: Request, res: Response) => {
             ? JSON.parse(req.body.userInfo)
             : req.body.userInfo;
       } catch (e) {
-        console.error("❌ JSON 파싱 실패:", e);
+        console.error("❌ JSON parsing failed:", e);
         updateData = req.body;
       }
     } else {
       updateData = req.body;
     }
-
-    console.log("📸 req.file 상태:", req.file);
 
     if (req.file) {
       updateData.profileImage = req.file.filename;
