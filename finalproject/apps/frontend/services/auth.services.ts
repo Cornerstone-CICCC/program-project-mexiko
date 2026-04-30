@@ -8,6 +8,7 @@ import {
   signOut,
   deleteUser,
 } from "firebase/auth";
+import { Platform } from "react-native";
 
 // Interfaces for type safety
 interface SignUpData {
@@ -18,10 +19,10 @@ interface SignUpData {
   password: string;
 
   // Information for profile
-  gender: 'Male' | 'Female' | 'Other';
+  gender: "Male" | "Female" | "Other";
   birthDate: string;
   bio: string;
-  interests: string[];
+  Interests: string[];
   profileImage?: string | null;
   subImages?: string[];
 
@@ -35,7 +36,7 @@ interface SignUpData {
     min: number;
     max: number;
   };
-  preferredGender: 'Male' | 'Female' | 'Other' | 'All';
+  preferredGender: "Male" | "Female" | "Other" | "All";
   showLocationOnProfile: boolean;
 }
 
@@ -46,21 +47,22 @@ interface LoginData {
 
 class AuthService {
   async signUp(userData: SignUpData) {
+    //console.log("front userData", userData);
     try {
       console.log("🚀 Starting signup process with all data...");
-      console.log("User data received:", {
-        name: userData.name,
-        lastName: userData.lastName,
-        email: userData.email,
-        gender: userData.gender,
-        birthDate: userData.birthDate,
-        bioLength: userData.bio?.length,
-        interestsCount: userData.interests?.length,
-        preferredDistance: userData.preferredDistance,
-        preferredGender: userData.preferredGender,
-        hasProfileImage: !!userData.profileImage,
-        subImagesCount: userData.subImages?.length || 0,
-      });
+      // console.log("User data received:", {
+      //   name: userData.name,
+      //   lastName: userData.lastName,
+      //   email: userData.email,
+      //   gender: userData.gender,
+      //   birthDate: userData.birthDate,
+      //   bioLength: userData.bio?.length,
+      //   interestsCount: userData.Interests?.length,
+      //   preferredDistance: userData.preferredDistance,
+      //   preferredGender: userData.preferredGender,
+      //   hasProfileImage: !!userData.profileImage,
+      //   subImagesCount: userData.subImages?.length || 0,
+      // });
 
       // Validations with detailed logging
       if (userData.password.length < 6) {
@@ -74,10 +76,10 @@ class AuthService {
       if (!userData.birthDate) {
         throw new Error("Please enter your birth date");
       }
-      if (!userData.bio || userData.bio.length < 20) {
-        throw new Error("Bio must be at least 20 characters long");
+      if (!userData.bio || userData.bio.length < 10) {
+        throw new Error("Bio must be at least 10 characters long");
       }
-      if (!userData.interests || userData.interests.length === 0) {
+      if (!userData.Interests || userData.Interests.length === 0) {
         throw new Error("Please add at least one interest");
       }
       if (!userData.location || userData.location.coordinates[0] === 0) {
@@ -94,13 +96,15 @@ class AuthService {
           userData.email,
           userData.password,
         );
-        console.log("✅ New user created in Firebase:", userCredential.user.uid);
+        console.log(
+          "✅ New user created in Firebase:",
+          userCredential.user.uid,
+        );
         isNewUser = true;
 
         // Send email verification
         await sendEmailVerification(userCredential.user);
         console.log("📧 Verification email sent to:", userData.email);
-
       } catch (firebaseError: any) {
         // If email already exists, try to log in instead
         if (firebaseError.code === "auth/email-already-in-use") {
@@ -111,7 +115,10 @@ class AuthService {
             userData.email,
             userData.password,
           );
-          console.log("✅ Automatic login successful:", userCredential.user.uid);
+          console.log(
+            "✅ Automatic login successful:",
+            userCredential.user.uid,
+          );
           isNewUser = false;
         } else {
           throw firebaseError;
@@ -124,48 +131,87 @@ class AuthService {
       // Prepare information for backend
       const userInfoForBackend = {
         fullName: {
-          first: userData.name,
-          last: userData.lastName || "",
+          first: userData.fullName.first || "",
+          last: userData.fullName.last || "",
         },
         email: userData.email,
-        // Profile information
+
         gender: userData.gender,
         birthDate: userData.birthDate,
         bio: userData.bio,
-        interests: userData.interests || [],
+
+        Interests: userData.Interests || [],
+
         profileImage: userData.profileImage || null,
         subImages: userData.subImages || [],
-        // Preferences information
+
         location: {
           type: userData.location.type || "Point",
           coordinates: userData.location.coordinates || [0, 0],
         },
+
         preferredDistance: userData.preferredDistance || 10,
         preferredAgeRange: {
           min: userData.preferredAgeRange?.min || 18,
           max: userData.preferredAgeRange?.max || 30,
         },
+
         preferredGender: userData.preferredGender || "All",
         showLocationOnProfile: userData.showLocationOnProfile || false,
       };
 
+      // console.log("User data received:", {
+      //   name: userData.name,
+      //   lastName: userData.lastName,
+      //   email: userData.email,
+      //   gender: userData.gender,
+      //   birthDate: userData.birthDate,
+      //   bioLength: userData.bio?.length,
+      //   interestsCount: userData.Interests?.length,
+      // });
+
+      //console.log("userInfoForBackend", userInfoForBackend);
       console.log("📤 Sending complete user data to backend...");
 
       // Send token and complete user info to backend
+      const formData = new FormData();
+
+      formData.append("userInfo", JSON.stringify(userInfoForBackend));
+      formData.append("idToken", idToken);
+
+      if (userData.profileImage) {
+        formData.append("profileImage", {
+          uri: userData.profileImage,
+          name: "profile.jpg",
+          type: "image/jpeg",
+        } as any);
+      }
       const response = await fetch(API_ENDPOINTS.SIGNUP, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userInfo: userInfoForBackend,
-          idToken: idToken,
-        }),
-        credentials: "include",
+        body: formData,
       });
 
+      //console.log("🔥 profileImage before send:", userData.profileImage);
+
+      // const response = await fetch(API_ENDPOINTS.SIGNUP, {
+      //   method: "POST",
+      //   body: formData,
+      //   credentials: "include",
+      // });
+
+      // const response = await fetch(API_ENDPOINTS.SIGNUP, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     userInfo: userInfoForBackend,
+      //     idToken,
+      //   }),
+      // });
+
       const data = await response.json();
-      console.log("📥 Response from backend:", data);
+      //console.log("📥 Response from backend:", data);
 
       if (!response.ok) {
         // If backend fails, delete user from Firebase to maintain consistency
@@ -184,7 +230,6 @@ class AuthService {
         ...data,
         isNewUser: data.isNewUser !== undefined ? data.isNewUser : isNewUser,
       };
-
     } catch (error: any) {
       console.error("❌ Error en signUp:", error);
 

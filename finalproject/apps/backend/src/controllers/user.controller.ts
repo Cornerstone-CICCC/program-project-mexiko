@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
 import { User } from "../models/user.model";
+import * as matchService from "../services/match.service";
 
 // delete later
 export const createUserDev = async (req: Request, res: Response) => {
@@ -20,6 +21,14 @@ export const login = async (req: Request, res: Response) => {
 
     // Search for user by Firebase UID first (for users created after Firebase integration)
     let user = await userService.findUser(decodedToken.uid);
+
+    // lastlogin check
+    if (user) {
+      await User.updateOne(
+        { firebaseUid: decodedToken.uid },
+        { $set: { lastLogin: new Date() } },
+      );
+    }
 
     // If not found by UID, try email (for users created before Firebase integration)
     if (!user && email) {
@@ -126,9 +135,29 @@ export const getSessionMe = async (req: Request, res: Response) => {
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { userInfo, idToken } = req.body;
+    const { idToken } = req.body;
+
+    const userInfo =
+      typeof req.body.userInfo === "string"
+        ? JSON.parse(req.body.userInfo)
+        : req.body.userInfo;
+    let parsedUserInfo = userInfo;
+
+    if (typeof userInfo === "string") {
+      parsedUserInfo = JSON.parse(userInfo);
+    }
     const decodedToken = await userService.verifyFirebaseToken(idToken);
     const email = decodedToken.email || userInfo.email;
+
+    let profileImageName = userInfo.profileImage || "";
+
+    console.log("signup req.file", req.file);
+
+    if (req.file) {
+      profileImageName = req.file.filename;
+    } else if (profileImageName.startsWith("file://")) {
+      profileImageName = "";
+    }
 
     // find firebaseUid first
     let user = await userService.findUser(decodedToken.uid);
@@ -142,16 +171,17 @@ export const signup = async (req: Request, res: Response) => {
 
     // If not found by UID, try email (for users created before Firebase integration)
     user = await userService.findUserByEmail(email);
-
     if (user) {
-      // Update existing user with firebaseUid
       user.firebaseUid = decodedToken.uid;
       await user.save();
 
-      return res.status(200).json({
-        isNewUser: false,
-        user: user,
-        message: "User found by email and linked to Firebase UID.",
+      req.session.userId = user.firebaseUid;
+      return req.session.save(() => {
+        res.status(200).json({
+          isNewUser: false,
+          user: user,
+          message: "User found by email and linked to Firebase UID.",
+        });
       });
     }
 
@@ -160,10 +190,28 @@ export const signup = async (req: Request, res: Response) => {
       firebaseUid: decodedToken.uid,
       email: email,
       fullName: userInfo.fullName || {
-        first: userInfo.name || "Usuario",
-        last: "",
+        first: userInfo.fullName?.first ?? "",
+        last: userInfo.fullName?.last ?? "",
       },
+
+      gender: userInfo.gender,
+      birthDate: userInfo.birthDate,
+      bio: userInfo.bio,
+      Interests: userInfo.Interests || [],
+
+      profileImage: profileImageName || "",
+      subImages: userInfo.subImages || [],
+
+      location: userInfo.location,
+      preferredDistance: userInfo.preferredDistance,
+      preferredAgeRange: userInfo.preferredAgeRange,
+      preferredGender: userInfo.preferredGender,
+      showLocationOnProfile: userInfo.showLocationOnProfile,
     });
+
+    await matchService.generateMatchesForNewUser(newUser.firebaseUid);
+
+    req.session.userId = newUser.firebaseUid;
 
     res.status(201).json({
       isNewUser: true,
@@ -202,15 +250,73 @@ export const getUser = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateUser = async (req: Request, res: Response) => {
+//   try {
+//     const id = req.params.id as string;
+//     //const updated = await userService.updateUserInfo(id, req.body.userInfo);
+
+//     let userInfoData = req.body.userInfo;
+//     if (typeof userInfoData === "string") {
+//       try {
+//         userInfoData = JSON.parse(userInfoData);
+//       } catch (e) {
+//         console.error("JSON Parse Error:", e);
+//       }
+//     }
+
+//     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+//     if (files?.profileImage?.[0]) {
+//       userInfoData.profileImage = files.profileImage[0].filename;
+//     }
+
+//     const updated = await userService.updateUserInfo(id, userInfoData);
+
+//     if (!updated) return res.status(404).json({ error: "User not found." });
+
+//     res.status(201).json(updated);
+//   } catch (e: unknown) {
+//     const message =
+//       e instanceof Error ? e.message : "Failed to update user information.";
+//     res.status(500).json({ error: message });
+//   }
+// };
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const updated = await userService.updateUserInfo(id, req.body.userInfo);
-    res.status(201).json(updated);
-  } catch (e: unknown) {
-    const message =
-      e instanceof Error ? e.message : "Failed to update user information.";
-    res.status(500).json({ error: message });
+    let updateData: any = {};
+
+    if (req.body.userInfo) {
+      try {
+        updateData =
+          typeof req.body.userInfo === "string"
+            ? JSON.parse(req.body.userInfo)
+            : req.body.userInfo;
+      } catch (e) {
+        console.error("❌ JSON parsing failed:", e);
+        updateData = req.body;
+      }
+    } else {
+      updateData = req.body;
+    }
+
+    if (req.file) {
+      updateData.profileImage = req.file.filename;
+    } else if (
+      updateData.profileImage &&
+      updateData.profileImage.startsWith("blob:")
+    ) {
+      delete updateData.profileImage;
+    }
+
+    const actualData = await userService.updateUserInfo(id, updateData);
+
+    if (!actualData) return res.status(404).json({ error: "User not found" });
+    console.log("actualData", actualData);
+    res.status(200).json(actualData);
+  } catch (error: any) {
+    console.error("❌ update error detail:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 

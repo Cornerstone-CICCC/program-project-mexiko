@@ -16,6 +16,9 @@ import dbTestRouter from "./routes/db-test.routes";
 import cron from "node-cron";
 import { generateDailyMatches } from "./services/match.service";
 
+import { User } from "./models/user.model";
+import { Message } from "./models/message.model";
+
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 console.log("🔍 Verificando variables de entorno...");
@@ -37,7 +40,7 @@ console.log("✅ Variables de entorno verificadas");
 import "./config/firebase-admin";
 
 // ===== CRON ===== batch
-cron.schedule("10 00 * * *", async () => {
+cron.schedule("00 08 * * *", async () => {
   // minute / hour / day (of month) / month / day of week
   console.log("Batch process started: Generating daily matches.");
   try {
@@ -75,18 +78,94 @@ const io = new Server(httpServer, {
 
 app.set("io", io);
 
+// io.on("connection", (socket) => {
+//   console.log("A user connected:", socket.id);
+
+//   socket.on("join_room", (roomId) => {
+//     socket.join(roomId);
+//     console.log(`User joined room: ${roomId}`);
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("User disconnected");
+//   });
+// });
+
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  const userId = socket.handshake.auth.userId;
+  console.log(`📡 New Socket Connection: ${socket.id}, User: ${userId}`);
+
+  if (userId) {
+    onlineUsers.set(userId, socket.id);
+    updateUserStatus(userId, true);
+  }
 
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+    console.log(`✅ User joined room: ${roomId}`);
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
+  socket.on("send_message", async ({ roomId, message, senderId }) => {
+    socket.to(roomId).emit("receive_message", message);
+
+    const unreadCount = await Message.countDocuments({
+      chatRoomId: roomId,
+      senderId: { $ne: senderId },
+      isRead: false,
+    });
+
+    io.emit("update_chat_list", {
+      roomId,
+      lastMessage: message.content,
+      updatedAt: new Date(),
+      senderId,
+      unreadCount,
+    });
+  });
+
+  socket.on("ping_online", async () => {
+    console.log(`🔥 PING RECEIVED FROM: ${userId}`);
+    if (!userId) return;
+
+    const now = new Date();
+    await User.updateOne(
+      { firebaseUid: userId },
+      {
+        $set: {
+          isOnline: true,
+          lastActive: now,
+          lastLogin: now,
+        },
+      },
+    );
+
+    io.emit("user_status_changed", { userId, status: "online" });
+  });
+
+  socket.on("disconnect", async () => {
+    if (userId) {
+      onlineUsers.delete(userId);
+      await updateUserStatus(userId, false);
+    }
   });
 });
+
+async function updateUserStatus(userId: string, isOnline: boolean) {
+  try {
+    await User.updateOne(
+      { firebaseUid: userId },
+      { $set: { isOnline, lastActive: new Date() } },
+    );
+    io.emit("user_status_changed", {
+      userId,
+      status: isOnline ? "online" : "offline",
+    });
+  } catch (err) {
+    console.error("Status update error:", err);
+  }
+}
 
 // ===== MIDDLEWARE =====
 app.use(express.json());

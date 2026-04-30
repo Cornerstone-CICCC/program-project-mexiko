@@ -13,7 +13,11 @@ export const listRooms = async (req: Request, res: Response) => {
 
     const rooms = await chatService.getMyRooms(userId);
 
-    res.status(200).json({ data: rooms });
+    //res.status(200).json({ data: rooms });
+    res.status(200).json({
+      currentUserId: userId,
+      data: rooms,
+    });
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -25,7 +29,7 @@ export const getRoom = async (req: Request, res: Response) => {
     const userId = req.session.userId;
     const page = parseInt(req.query.page as string) || 1;
     console.log("roomId", roomId);
-    console.log("userId", userId);
+    console.log("userId controller", userId);
 
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
     if (!roomId) return res.status(400).json({ error: "Room ID is required" });
@@ -133,10 +137,10 @@ export const postMessage = async (req: Request, res: Response) => {
       isRead: false,
     });
 
-    if (isRecipientPresent) {
-      newMessage.isRead = true;
-      await newMessage.save();
-    }
+    // if (isRecipientPresent) {
+    //   newMessage.isRead = true;
+    //   await newMessage.save();
+    // }
 
     if (io) {
       io.to(roomId).emit("receive_message", newMessage);
@@ -284,5 +288,48 @@ export const toggleReveal = async (req: Request, res: Response) => {
   } catch (e: any) {
     console.error("❌ toggleReveal Error:", e.message);
     res.status(500).json({ error: e.message });
+  }
+};
+
+export const getBlacklist = async (req: Request, res: Response) => {
+  try {
+    console.log("Current Session:", req.session);
+    const userId = req.session.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const blacklist = await chatService.getBlacklist(userId);
+
+    res.status(200).json({
+      success: true,
+      data: blacklist,
+    });
+  } catch (error: any) {
+    console.error("❌ getBlacklist Error:", error.message);
+    res.status(500).json({ error: "Failed to fetch blacklist" });
+  }
+};
+
+export const unblockUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.session.userId;
+    const roomId = req.params.roomId;
+
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!roomId) return res.status(400).json({ error: "Room ID is required" });
+
+    const updatedRoom = await chatService.unblockUser(roomId, userId);
+
+    if (!updatedRoom) {
+      return res.status(404).json({ error: "Chat room not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User unblocked successfully",
+      data: updatedRoom,
+    });
+  } catch (error: any) {
+    console.error("❌ unblockUser Error:", error.message);
+    res.status(500).json({ error: "Failed to unblock user" });
   }
 };

@@ -9,7 +9,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { Link } from "expo-router";
@@ -19,6 +19,15 @@ import { auth } from "@/config/firebase";
 import { MBTI_DETAILS } from "@/utils/mbti";
 import * as Location from "expo-location";
 import Slider from "@react-native-community/slider";
+import { useRouter, useFocusEffect } from "expo-router";
+import { getSocket } from "../utils/socket";
+
+import axios from "axios";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
 
 const Profile = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -26,41 +35,96 @@ const Profile = () => {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [birthDate, setBirthDate] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(
+    null,
+  );
 
   const editPath = user?.firebaseUid ? `/${user.firebaseUid}/edit` : "/edit";
 
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/chatroom");
+      //console.log("chat room response", response);
+      if (response.data.currentUserId) {
+        setCurrentUserId(response.data.currentUserId);
+      }
+    } catch (error) {
+      console.error("Fetch rooms error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSafeUserId = () => {
+    return user?.firebaseUid || user?.uid || auth.currentUser?.uid;
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("fetch room");
+      fetchRooms();
+    }, []),
+  );
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        lng: loc.coords.longitude,
+        lat: loc.coords.latitude,
+      });
+    })();
+  }, []);
+
   const getLocation = async () => {
+    const userId = getSafeUserId();
+    if (!userId) {
+      Alert.alert("Error", "User session not found.");
+      return;
+    }
+
     try {
       setLoadingLocation(true);
-
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permission denied",
-          "Allow location access to set your profile.",
-        );
+        Alert.alert("Permission denied", "Allow location access.");
         return;
       }
 
       const locationData = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = locationData.coords;
 
       const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
       const address = geo?.[0];
-
       const city =
         address?.city || address?.district || address?.subregion || "";
       const region = address?.region || "";
-
       const locationString =
-        city && region
-          ? `${city}, ${region}`
-          : `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+        city && region ? `${city}, ${region}` : "Unknown Location";
 
-      await updateLocation(user.uid, locationString);
+      const locationPayload = {
+        type: "Point",
+        coordinates: [longitude, latitude],
+        address: locationString,
+      };
+
+      await updateLocation(userId, locationPayload);
+
+      //await updateLocation(userId, locationString);
     } catch (e) {
       console.error(e);
     } finally {
@@ -89,29 +153,40 @@ const Profile = () => {
     setImage(uri);
     //console.log("uri", uri);
     //const currentUser = auth.currentUser;
+    const userId = getSafeUserId();
 
-    await updateProfile(user.uid, uri);
+    await updateProfile(userId, uri);
   };
 
   // connect db
   const getUserInfo = async (userId: string, selectedMbti: string) => {
     try {
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const response = await fetch(`${SERVER_URL}/users/${userId}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
 
       //setUser(response);
-      console.log("response", response);
+      //console.log("response", response);
       if (response.ok) {
+        if (
+          data.location &&
+          !data.location.address &&
+          data.location.coordinates
+        ) {
+          const [lng, lat] = data.location.coordinates;
+          const addressText = await getAddressFromCoords(lat, lng);
+          data.location.address = addressText;
+        }
+
         setUser(data);
         if (data.Interests) {
           setSelectedInterests(data.Interests);
         }
 
         if (data.profileImage) {
-          console.log("data.profileImage", data.profileImage);
+          //console.log("data.profileImage", data.profileImage);
           setImage(data.profileImage);
         }
         setSelectedInterests(data.Interests);
@@ -135,59 +210,103 @@ const Profile = () => {
     userId: string,
     selectedprofileImage: string,
   ) => {
+    const finalId = userId || auth.currentUser?.uid;
+
+    if (!finalId) {
+      console.error("Error: User ID not found.");
+      return;
+    }
+
+    console.log("Attempting upload with ID:", finalId);
+
     try {
       setIsSyncing(true);
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        const response = await fetch(selectedprofileImage);
+        const blob = await response.blob();
+        formData.append("profileImage", blob, "profile.jpg");
+      } else {
+        const filename = selectedprofileImage.split("/").pop() || "profile.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append("profileImage", {
+          uri: selectedprofileImage,
+          name: filename,
+          type: type,
+        } as any);
+      }
+
+      const userInfo = { profileImage: selectedprofileImage };
+      formData.append("userInfo", JSON.stringify(userInfo));
+
+      const response = await fetch(`${SERVER_URL}/users/${finalId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userInfo: {
-            profileImage: selectedprofileImage,
-          },
-        }),
+        body: formData,
+        headers: {
+          Accept: "application/json",
+        },
       });
-      console.log("response", response);
+
       if (response.ok) {
-        setUser((prev: any) => ({
-          ...prev,
-          profileImage: selectedprofileImage,
-        }));
+        const data = await response.json();
+        setUser(data);
+        setImage(data.profileImage);
         console.log("✅ DB Update Success");
+      } else {
+        const errorData = await response.json();
+        console.error("❌ server response error:", errorData);
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
 
-  const updateLocation = async (userId: string, location: string) => {
+  const getAddressFromCoords = async (latitude: number, longitude: number) => {
+    try {
+      const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geo?.[0]) {
+        const city = geo[0].city || geo[0].district || geo[0].region || "";
+        const country = geo[0].country || "";
+        return `${city}, ${country}`.trim() || "Unknown Location";
+      }
+    } catch (e) {
+      console.error("Reverse Geocode Error:", e);
+    }
+    return "Location Set";
+  };
+
+  const updateLocation = async (userId: string, locationPayload: any) => {
     try {
       setIsSyncing(true);
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const response = await fetch(`${SERVER_URL}/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userInfo: {
-            location: location,
+            location: locationPayload,
           },
         }),
       });
-      console.log("response", response);
+
       if (response.ok) {
-        setUser((prev: any) => ({
-          ...prev,
-          location: location,
-        }));
+        const updatedData = await response.json();
+
+        setUser({
+          ...updatedData,
+          location: {
+            ...updatedData.location,
+            address: locationPayload.address,
+          },
+        });
         console.log("✅ DB Update Success");
       }
     } catch (error) {
       console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
@@ -222,13 +341,45 @@ const Profile = () => {
 
   const bio = user?.bio || "Write Your Introduction";
   //const locationText = user?.location;
-  const locationText =
-    typeof user?.location === "string"
-      ? user.location
-      : user?.location?.type === "Point"
-        ? "Location set"
-        : "";
-  console.log("locationText", locationText);
+  const locationText = (() => {
+    if (!user?.location) return "Set Location";
+    // console.log(
+    //   "user.location",
+    //   user.location,
+    //   "type",
+    //   typeof user.location,
+    //   user.location.address,
+    // );
+    if (typeof user.location === "string") return user.location;
+
+    if (typeof user.location === "object") {
+      if (user.location.address) {
+        return user.location.address;
+      }
+
+      if (
+        user.location.type === "Point" &&
+        Array.isArray(user.location.coordinates)
+      ) {
+        return `${user.location.coordinates[1].toFixed(2)}, ${user.location.coordinates[0].toFixed(2)}`;
+      }
+    }
+
+    return "Set Location";
+  })();
+  //console.log("locationText", locationText);
+
+  const getImageUrl = (path: string) => {
+    if (!path) return null;
+    if (
+      path.startsWith("http") ||
+      path.startsWith("blob") ||
+      path.startsWith("file")
+    ) {
+      return path;
+    }
+    return `${SERVER_URL}/uploads/${path}`;
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
@@ -242,7 +393,7 @@ const Profile = () => {
             <Image
               source={
                 image
-                  ? { uri: image }
+                  ? { uri: getImageUrl(image) }
                   : require("@/assets/images/man-profile-gray.png")
               }
               style={{ width: "100%", height: "100%", borderRadius: 100 }}
@@ -310,7 +461,13 @@ const Profile = () => {
           <View className="flex-row justify-between items-center">
             <Text className="text-2xl font-bold text-slate-900">Birthday</Text>
             <Text className="text-slate-900 text-xl font-bold">
-              {user?.birthDate ? user.birthDate.split("T")[0] : "Not set"}
+              {user?.birthDate
+                ? new Date(user.birthDate).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Not set"}
             </Text>
           </View>
         </View>

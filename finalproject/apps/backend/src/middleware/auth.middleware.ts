@@ -11,9 +11,9 @@ export const isAuthenticated = async (
   res: Response,
   next: NextFunction,
 ) => {
-  console.log("=== isAuthenticated MIDDLEWARE ===");
-  console.log("req.session:", req.session);
-  console.log("req.session.userId:", req.session?.userId);
+  // console.log("=== isAuthenticated MIDDLEWARE ===");
+  // console.log("req.session:", req.session);
+  // console.log("req.session.userId:", req.session?.userId);
 
   // Get userId from session (which is the firebaseUid)
   const userId = req.session?.userId;
@@ -24,10 +24,10 @@ export const isAuthenticated = async (
     return res.status(401).json({ error: "Unauthorized: No session found." });
   }
   // User login time check
-  User.updateOne(
-    { firebaseUid: userId },
-    { $set: { lastLogin: new Date() } },
-  ).catch((err) => console.error("Failed to update lastLogin:", err));
+  // User.updateOne(
+  //   { firebaseUid: userId },
+  //   { $set: { lastLogin: new Date() } },
+  // ).catch((err) => console.error("Failed to update lastLogin:", err));
 
   req.userId = userId;
   console.log("req.userId set to:", req.userId);

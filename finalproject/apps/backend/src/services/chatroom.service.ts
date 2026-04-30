@@ -52,7 +52,7 @@ export const chatService = {
           const lastMessageSender = latestMsg ? latestMsg.senderId : null;
           const lastMessageTime = latestMsg
             ? latestMsg.createdAt
-            : room.createdAt;
+            : room.updatedAt;
 
           const validObjectIds = room.participants.filter((p: any) =>
             mongoose.Types.ObjectId.isValid(p),
@@ -65,8 +65,10 @@ export const chatService = {
                 { _id: { $in: validObjectIds } },
               ],
             },
-            "firebaseUid mbtiType fullName profileImage lastLogin gender",
+            "firebaseUid mbtiType fullName profileImage lastLogin gender isRevealed",
           ).lean();
+
+          //console.log("participantDetails", participantDetails);
 
           const myDetail = participantDetails.find(
             (p) => p.firebaseUid === firebaseUid,
@@ -81,7 +83,12 @@ export const chatService = {
             isRead: false,
             createdAt: { $gt: myDeletedAt },
           });
-
+          // console.log(
+          //   "otherDetail",
+          //   otherDetail,
+          //   "participantDetails",
+          //   participantDetails,
+          // );
           return {
             ...room,
             participants: participantDetails,
@@ -90,8 +97,10 @@ export const chatService = {
             lastMessage: lastMessageToShow,
             lastMessageSenderId: lastMessageSender,
             unreadCount,
-            updatedAt: lastMessageTime || room.createdAt,
+            updatedAt: lastMessageTime,
             currentUserId: firebaseUid,
+            isRevealed: room.isRevealed || false,
+            status: room.status || "active",
           };
         }),
       );
@@ -290,10 +299,11 @@ export const chatService = {
     if (!room) throw new Error("Room not found");
 
     const targetId = room.participants.find((p) => p !== userId);
-
+    console.log("block targetId:", targetId);
+    console.log("block userId:", userId);
     return await ChatRoom.findOneAndUpdate(
       { roomId: roomId },
-      { $addToSet: { blockedBy: targetId } },
+      { $addToSet: { blockedBy: userId } },
       { new: true },
     );
   },
@@ -339,5 +349,33 @@ export const chatService = {
     }
 
     return updatedRoom;
+  },
+
+  async getBlacklist(firebaseUid: string) {
+    const rooms = await ChatRoom.find({
+      participants: firebaseUid,
+      blockedBy: firebaseUid,
+    }).lean();
+
+    return Promise.all(
+      rooms.map(async (room) => {
+        const otherId = room.participants.find((p) => p !== firebaseUid);
+        const otherDetail = await User.findOne(
+          { firebaseUid: otherId },
+          "mbtiType fullName profileImage",
+        );
+        return {
+          roomId: room.roomId,
+          otherUser: otherDetail,
+        };
+      }),
+    );
+  },
+  async unblockUser(roomId: string, userId: string) {
+    return await ChatRoom.findOneAndUpdate(
+      { roomId: roomId },
+      { $pull: { blockedBy: userId } },
+      { returnDocument: "after" },
+    );
   },
 };

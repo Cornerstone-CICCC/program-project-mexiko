@@ -19,6 +19,13 @@ import * as ImagePicker from "expo-image-picker";
 import { auth } from "@/config/firebase";
 import DatePicker from "react-native-ui-datepicker";
 import dayjs from "dayjs";
+import axios from "axios";
+import * as Location from "expo-location";
+
+const SERVER_URL = "http://localhost:3500";
+
+axios.defaults.baseURL = SERVER_URL;
+axios.defaults.withCredentials = true;
 
 const profileEdit = () => {
   const [minAge, setMinAge] = useState(25);
@@ -29,6 +36,9 @@ const profileEdit = () => {
   const [preferredGender, setPreferredGender] = useState("All");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
+  const [location, setLocation] = useState<{ lng: number; lat: number } | null>(
+    null,
+  );
 
   const [allInterests] = useState([
     "Reading",
@@ -98,17 +108,16 @@ const profileEdit = () => {
     if (result.canceled) return;
 
     const uri = result.assets[0].uri;
-    setImage(uri);
-    //console.log("uri", uri);
-    //const currentUser = auth.currentUser;
 
-    await updateProfile(user.uid, uri);
+    setImage(uri);
+
+    // await updateProfile(user.uid, uri);
   };
 
   // connect db
   const getUserInfo = async (userId: string, selectedMbti: string) => {
     try {
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
+      const response = await fetch(`${SERVER_URL}/users/${userId}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
@@ -158,41 +167,120 @@ const profileEdit = () => {
 
   const saveAllChanges = async () => {
     const userId = user?.firebaseUid || auth.currentUser?.uid;
-    if (!userId) return;
+    if (!userId) {
+      Alert.alert("Error", "User not found");
+      return;
+    }
 
     try {
       setIsSyncing(true);
-      const response = await fetch(`http://localhost:3500/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userInfo: {
-            profileImage: image,
-            bio: bio,
-            preferredAgeRange: { min: minAge, max: maxAge },
-            preferredDistance: distance,
-            Interests: selectedInterests,
-            gender: gender,
-            birthDate: birthDate,
-            preferredGender: preferredGender,
+
+      const userInfo = {
+        bio: bio,
+        preferredAgeRange: { min: minAge, max: maxAge },
+        preferredDistance: distance,
+        Interests: selectedInterests,
+        gender: gender,
+        birthDate: birthDate,
+        preferredGender: preferredGender,
+        location: location
+          ? {
+              type: "Point",
+              coordinates: [location.lng, location.lat],
+            }
+          : undefined,
+      };
+
+      let response;
+
+      if (image && (image.startsWith("file://") || image.startsWith("blob:"))) {
+        const formData = new FormData();
+
+        const fileType = image.split(".").pop()?.toLowerCase();
+
+        const fileName = `profile-${Date.now()}.${fileType}`;
+
+        const mimeType =
+          fileType === "jpg" || fileType === "jpeg"
+            ? "image/jpeg"
+            : fileType === "png"
+              ? "image/png"
+              : "image/jpeg";
+
+        formData.append("profileImage", {
+          uri: image,
+          name: fileName,
+          type: mimeType,
+        } as any);
+
+        console.log("IMAGE URI:", image);
+
+        formData.append("userInfo", JSON.stringify(userInfo));
+
+        response = await fetch(`${SERVER_URL}/users/${userId}`, {
+          method: "PATCH",
+          body: formData,
+          headers: {
+            Accept: "application/json",
           },
-        }),
-      });
-      console.log("response", response);
-      if (response.ok) {
-        const updatedData = await response.json();
-        setUser(updatedData);
-        console.log("✅ DB Update Success");
-        if (response.ok) Alert.alert("Success", "Saved your profile");
+        });
+      } else {
+        response = await fetch(`${SERVER_URL}/users/${userId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ userInfo }),
+        });
       }
-    } catch (error) {
-      console.error("❌ DB Update Error:", error);
-      Alert.alert("Error", "Failed to save your MBTI result to the server.");
+
+      const responseData = await response.json();
+
+      if (response.ok) {
+        setUser(responseData);
+        if (responseData.profileImage) {
+          setImage(responseData.profileImage);
+        }
+        Alert.alert("Success", "Profile saved successfully!");
+      } else {
+        throw new Error(responseData.error || "Update failed");
+      }
+    } catch (error: any) {
+      console.error("❌ Save Changes Error:", error);
+      Alert.alert("Error", error.message || "Something went wrong.");
     } finally {
-      //console.log("finally");
       setIsSyncing(false);
     }
   };
+
+  const getImageUrl = (path: string) => {
+    if (!path) return null;
+    if (
+      path.startsWith("http") ||
+      path.startsWith("blob") ||
+      path.startsWith("file")
+    ) {
+      return path;
+    }
+    return `${SERVER_URL}/uploads/${path}`;
+  };
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        lng: loc.coords.longitude,
+        lat: loc.coords.latitude,
+      });
+    })();
+  }, []);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -239,7 +327,7 @@ const profileEdit = () => {
                 <Image
                   source={
                     image
-                      ? { uri: image }
+                      ? { uri: getImageUrl(image) }
                       : require("@/assets/images/man-profile-gray.png")
                   }
                   style={{ width: "100%", height: "100%", borderRadius: 100 }}
@@ -261,26 +349,6 @@ const profileEdit = () => {
             >
               <Text style={styles.changePhotoText}>Change Photo</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.formContainer}>
-          <View
-            style={[
-              styles.cardContainer,
-              { marginTop: 20, marginHorizontal: 20 },
-            ]}
-          >
-            <Text style={styles.inputLabel}>Birth Date</Text>
-            <TextInput
-              style={styles.addInterestInput}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#94a3b8"
-              value={birthDate}
-              onChangeText={setBirthDate}
-            />
-            <Text style={{ fontSize: 12, color: "#94a3b8", mt: 5 }}>
-              Example: 1994-05-21
-            </Text>
           </View>
         </View>
 
@@ -316,6 +384,31 @@ const profileEdit = () => {
               />
               <Text style={styles.charCount}>0 / 300</Text>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.formContainer}>
+          <View
+            style={[
+              styles.cardContainer,
+              { marginTop: 20, marginHorizontal: 20 },
+            ]}
+          >
+            <Text style={styles.inputLabel}>Birth Date</Text>
+            <TextInput
+              style={styles.addInterestInput}
+              placeholder="Select your birth date"
+              placeholderTextColor="#94a3b8"
+              value={birthDate ? dayjs(birthDate).format("MMMM D, YYYY") : ""}
+              onChangeText={setBirthDate}
+              onFocus={() => setShowPicker(true)}
+            />
+            <Text style={{ fontSize: 12, color: "#94a3b8", mt: 5 }}>
+              Example:{" "}
+              {birthDate
+                ? dayjs(birthDate).format("MMMM D, YYYY")
+                : "May 21, 1994"}
+            </Text>
           </View>
         </View>
 

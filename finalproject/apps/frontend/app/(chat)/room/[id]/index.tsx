@@ -68,6 +68,8 @@ const ChatRoom = () => {
   const [targetInfo, setTargetInfo] = useState<{
     mbti: string;
     score: number;
+    name: string;
+    profileSource: any;
   } | null>(null);
 
   const fetchMessages = async (isMore = false) => {
@@ -129,22 +131,47 @@ const ChatRoom = () => {
           (p: any) => p.firebaseUid !== currentUserId,
         );
 
-        const myMbti = me?.mbtiType || me?.mbti || "ENFP";
-        const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
-
-        console.log("MBTI Check:", { myMbti, otherMbti });
-
-        const score = calculateSynergy(myMbti, otherMbti);
-
         if (other) {
-          setTargetInfo({
-            mbti: otherMbti,
-            score: score,
-          });
+          let profileSource;
+          if (room.isRevealed && other.profileImage) {
+            let fileName = other.profileImage;
+
+            if (fileName.includes("/")) {
+              fileName = fileName.split("/").pop();
+            }
+
+            const imageUrl = other.profileImage.startsWith("http")
+              ? other.profileImage
+              : `${SERVER_URL}/uploads/${fileName}`;
+
+            profileSource = { uri: imageUrl };
+          }
+
+          const myMbti = me?.mbtiType || me?.mbti || "ENFP";
+          const otherMbti = other?.mbtiType || other?.mbti || "ENFP";
+
+          console.log("MBTI Check:", { myMbti, otherMbti });
+
+          const score = calculateSynergy(myMbti, otherMbti);
+          console.log("chatroom other:", other.fullName.first);
+          console.log("profileSource:", profileSource);
+          if (other) {
+            setTargetInfo({
+              mbti: otherMbti,
+              score: score,
+              name: other.fullName.first + " " + other.fullName.last,
+              profileSource: profileSource,
+            });
+          }
         }
       } else {
         console.log("⚠️ No participants data found in room object");
-        setTargetInfo({ mbti: "---", score: 0 });
+        setTargetInfo({
+          mbti: "---",
+          score: 0,
+          name: "Unknown",
+          profileSource: "",
+        });
       }
 
       if (dbMessages.length < 50) setHasMore(false);
@@ -320,7 +347,7 @@ const ChatRoom = () => {
 
   useEffect(() => {
     if (!roomId || !myId) return;
-    const socket = getSocket();
+    const socket = getSocket(myId);
 
     // Listen for the other person's consent
     socket.on("receive_reveal_request", ({ senderId }) => {
@@ -360,7 +387,7 @@ const ChatRoom = () => {
 
   useEffect(() => {
     if (!roomId || !myId) return;
-    const socket = getSocket();
+    const socket = getSocket(myId);
     socket.emit("join_room", roomId);
 
     socket.on("messages_read", ({ roomId: readRoomId, userId: readerId }) => {
@@ -374,13 +401,17 @@ const ChatRoom = () => {
 
     socket.on("receive_message", (newMessage) => {
       if (newMessage.senderId === myId) return;
+
       const formatted = {
         id: newMessage._id,
         text: newMessage.content,
-        image:
+        images:
           newMessage.messageType === "image"
-            ? `${SERVER_URL}/uploads/${newMessage.content}`
-            : null,
+            ? (Array.isArray(newMessage.content)
+                ? newMessage.content
+                : newMessage.content.split(",")
+              ).map((img: string) => `${SERVER_URL}/uploads/${img}`)
+            : [],
         video:
           newMessage.messageType === "video"
             ? `${SERVER_URL}/uploads/${newMessage.content}`
@@ -397,7 +428,13 @@ const ChatRoom = () => {
         isMe: false,
         isRead: true,
       };
-      setMessages((prev) => [...prev, formatted]);
+
+      setMessages((prev) => {
+        const exists = prev.find((m) => m.id === formatted.id);
+        if (exists) return prev;
+        return [...prev, formatted];
+      });
+
       socket.emit("mark_as_read", { roomId, userId: myId });
     });
 
@@ -432,7 +469,10 @@ const ChatRoom = () => {
             isDelivered: false,
           };
           setMessages((prev) => [...prev, formattedNewMsg]);
-          getSocket().emit("send_message", { roomId, message: newMsg });
+          getSocket(myId as string).emit("send_message", {
+            roomId,
+            message: newMsg,
+          });
         }
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -619,6 +659,36 @@ const ChatRoom = () => {
     );
   };
 
+  // const handleProfileImageClick = () => {
+  //   if (!targetInfo?.profileSource) return;
+
+  //   const imageUri =
+  //     typeof targetInfo.profileSource === "number"
+  //       ? Image.resolveAssetSource(targetInfo.profileSource).uri
+  //       : targetInfo.profileSource.uri;
+
+  //   setSelectedFullImage(imageUri);
+  // };
+  const handleProfileImageClick = () => {
+    if (!targetInfo?.profileSource) return;
+
+    if (typeof targetInfo.profileSource === "number") {
+      const asset = Image.resolveAssetSource(targetInfo.profileSource);
+      setSelectedFullImage(asset.uri);
+      return;
+    }
+
+    let imageUri = targetInfo.profileSource.uri;
+
+    if (imageUri && imageUri.startsWith("file://")) {
+      const fileName = imageUri.split("/").pop();
+      imageUri = `${SERVER_URL}/uploads/${fileName}`;
+    }
+
+    console.log("Opening Full Image URI:", imageUri);
+    setSelectedFullImage(imageUri);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -627,24 +697,43 @@ const ChatRoom = () => {
           <Link href="../" push asChild>
             <Entypo name="chevron-thin-left" size={24} color="#1e293b" />
           </Link>
-          <View className="flex-1 ml-4">
-            <View className="flex-row items-center">
-              <Text className="text-xl font-bold text-slate-900 mr-2">
-                {targetInfo?.mbti || "---"}
-              </Text>
-              <View className="bg-green-100 px-2 py-0.5 rounded-full">
-                <Text className="text-green-600 text-[10px] font-bold">
-                  {targetInfo
-                    ? `${targetInfo.score}% Match`
-                    : "Calculating..."}{" "}
+
+          <View className="flex-1 ml-4 flex-row items-center">
+            {targetInfo?.profileSource && (
+              <TouchableOpacity
+                onPress={handleProfileImageClick}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={targetInfo.profileSource}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    marginRight: 12,
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+
+            <View className="flex-1">
+              <View className="flex-row items-center">
+                <Text className="text-xl font-bold text-slate-900 mr-2">
+                  {isRevealed && targetInfo?.name
+                    ? `${targetInfo.name} (${targetInfo.mbti})`
+                    : targetInfo?.mbti || "---"}
                 </Text>
+                <View className="bg-green-100 px-2 py-0.5 rounded-full">
+                  <Text className="text-green-600 text-[10px] font-bold">
+                    {targetInfo
+                      ? `${targetInfo.score}% Match`
+                      : "Calculating..."}
+                  </Text>
+                </View>
               </View>
             </View>
-            <Text className="text-slate-400 text-[10px] mt-1">
-              <Entypo name="back-in-time" size={12} color="#94a3b8" />{" "}
-              {timeLeft} left
-            </Text>
           </View>
+
           <Link href={`/room/${roomId}/settings`} asChild>
             <TouchableOpacity>
               <Entypo name="dots-three-vertical" size={20} color="#1e293b" />
@@ -653,26 +742,28 @@ const ChatRoom = () => {
         </View>
       </View>
 
-      <View style={styles.bannerContainer}>
-        <View className="flex-row items-center justify-center px-4 py-2">
-          <Ionicons
-            name="lock-closed"
-            size={14}
-            color="#6366F1"
-            style={{ marginRight: 6 }}
-          />
-          <Text style={styles.bannerText}>
-            Mutual consent required for full profile reveal
-          </Text>
-          <TouchableOpacity className="ml-2" onPress={handleShowInfo}>
+      {!isRevealed && (
+        <View style={styles.bannerContainer}>
+          <View className="flex-row items-center justify-center px-4 py-2">
             <Ionicons
-              name="information-circle-outline"
-              size={16}
+              name="lock-closed"
+              size={14}
               color="#6366F1"
+              style={{ marginRight: 6 }}
             />
-          </TouchableOpacity>
+            <Text style={styles.bannerText}>
+              Mutual consent required for full profile reveal
+            </Text>
+            <TouchableOpacity className="ml-2" onPress={handleShowInfo}>
+              <Ionicons
+                name="information-circle-outline"
+                size={16}
+                color="#6366F1"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -845,22 +936,30 @@ const ChatRoom = () => {
       >
         <View className="px-5 py-4 bg-white border-t border-gray-100">
           {!isRevealed && (
-            <TouchableOpacity
-              onPress={handleRevealProfile}
-              activeOpacity={0.8}
-              style={{
-                backgroundColor: myRevealRequest ? "#94a3b8" : "#8B5CF6",
-              }}
-              className="py-3 rounded-2xl items-center mb-4 shadow-sm"
-            >
-              <Text className="text-white font-bold">
-                {myRevealRequest
-                  ? "Waiting for partner's response..."
-                  : partnerRevealRequest
-                    ? "Partner wants to reveal! Agree?"
-                    : "Ready to Reveal Profiles?"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.revealSection}>
+              <View style={styles.timerDisplay}>
+                <Entypo name="back-in-time" size={16} color="#6366F1" />
+                <Text style={styles.timerText}>{timeLeft}</Text>
+                <Text style={styles.timerLabel}>remaining to reveal</Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleRevealProfile}
+                activeOpacity={0.8}
+                style={[
+                  styles.revealButton,
+                  { backgroundColor: myRevealRequest ? "#94a3b8" : "#8B5CF6" },
+                ]}
+              >
+                <Text className="text-white font-bold text-lg">
+                  {myRevealRequest
+                    ? "Waiting for partner..."
+                    : partnerRevealRequest
+                      ? "Partner wants to reveal! Agree?"
+                      : "Reveal Profiles"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -934,5 +1033,44 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: -0.3,
+  },
+  revealSection: {
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  timerDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F3FF",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#DDD6FE",
+  },
+  timerText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#6366F1",
+    marginHorizontal: 8,
+    fontVariant: ["tabular-nums"],
+  },
+  timerLabel: {
+    fontSize: 12,
+    color: "#7C3AED",
+    fontWeight: "500",
+  },
+  revealButton: {
+    width: "100%",
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
   },
 });

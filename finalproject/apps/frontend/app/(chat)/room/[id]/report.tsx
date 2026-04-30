@@ -3,150 +3,103 @@ import {
   Text,
   View,
   TouchableOpacity,
-  TextInput,
   ScrollView,
-  Image,
-  Modal,
-  Alert,
 } from "react-native";
-import React, { useState } from "react";
-import { Stack, Link, useLocalSearchParams } from "expo-router";
+import React from "react";
+import { Stack, Link, useLocalSearchParams, useRouter } from "expo-router";
 import { Entypo } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const report = () => {
-  const { id } = useLocalSearchParams();
+const ReportScreen = () => {
+  const router = useRouter();
+  // id: ChatRoom ID, targetId: Reported User's ID, name: Reported User's Name
+  const { id, targetId, name } = useLocalSearchParams();
+  console.log("ChatRoom ID id", id);
+
   const reportReasons = [
-    {
-      id: 1,
-      label: "User profile",
-      reason: [
-        "Attempted/committed fraud",
-        "fraud and misinformation",
-        "Pornography",
-        "Dating",
-        "Foul language and racism",
-        "Social media marketing or advertising",
-        "Religion, politics, and other controversial topics",
-      ],
-      other: "",
-    },
-    {
-      id: 2,
-      label: "Chat",
-      reason: [
-        "Attempted/committed fraud",
-        "fraud and misinformation",
-        "Pornography",
-        "Dating",
-        "Foul language and racism",
-        "Social media marketing or advertising",
-        "Religion, politics, and other controversial topics",
-      ],
-      other: "",
-    },
-    {
-      id: 3,
-      label: "Moments",
-      reason: [
-        "Attempted/committed fraud",
-        "fraud and misinformation",
-        "Pornography",
-        "Dating",
-        "Foul language and racism",
-        "Social media marketing or advertising",
-        "Religion, politics, and other controversial topics",
-      ],
-      other: "",
-    },
+    { id: 1, label: "User profile" },
+    { id: 2, label: "Chat" },
+    { id: 3, label: "Moments" },
   ];
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
-      {/* header */}
       <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header */}
       <View style={styles.headerTopBar}>
-        <View className="flex-row items-center justify-between px-5 py-8 bg-white ">
-          <Link href="../" push asChild>
-            <TouchableOpacity>
-              <Entypo name="cross" size={20} color="#1e293b" />
-            </TouchableOpacity>
-          </Link>
-          <View className="flex-1 items-center mr-10">
-            <View className="flex-row items-center">
-              <Text className="text-2l font-bold text-slate-900 mr-2 ml-2">
-                Report UserName
-              </Text>
-            </View>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Entypo name="cross" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Text style={styles.headerTitle}>Report {name || "User"}</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.groupCard}>
-        <View
-          style={[
-            styles.itemContainer,
-            { flexDirection: "column", alignItems: "flex-start", gap: 8 },
-          ]}
-        >
-          <Text
-            style={[
-              styles.itemText,
-              { marginLeft: 0, fontSize: 14, color: "#64748b" },
-            ]}
-          >
-            Thank you for helping keep the MBTI Dating app community safe. Your
-            report will be reviewed by our community moderators. User will not
-            be notified of the report details
-          </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={styles.groupCard}>
+          <View style={styles.infoSection}>
+            <Text style={styles.infoDescription}>
+              Thank you for helping keep our community safe. Your report will be
+              reviewed by our moderators. The user will not be notified of this
+              report.
+            </Text>
 
-          <Text
-            style={[
-              styles.itemText,
-              { marginLeft: 0, fontWeight: "700", marginTop: 10 },
-            ]}
-          >
-            What is this report About
-          </Text>
+            <Text style={styles.sectionTitle}>What is this report about?</Text>
+          </View>
+
+          <View style={styles.listContainer}>
+            {reportReasons.map((reason, index) => (
+              <TouchableOpacity
+                key={reason.id}
+                style={[
+                  styles.itemContainer,
+                  index !== reportReasons.length - 1 && styles.borderBottom,
+                ]}
+                onPress={() => {
+                  // Navigate to detail with all necessary params
+                  router.push({
+                    pathname: `/room/${id}/reportDetail`,
+                    params: { id, targetId, name, label: reason.label },
+                  });
+                }}
+              >
+                <Text style={styles.itemText}>{reason.label}</Text>
+                <Entypo name="chevron-small-right" size={24} color="#CBD5E1" />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-
-        <View style={styles.listContainer}>
-          {reportReasons.map((reason, index) => (
-            <TouchableOpacity
-              key={reason.id}
-              style={[
-                styles.itemContainer,
-                index !== reportReasons.length - 1 && {
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#F1F5F9",
-                },
-              ]}
-            >
-              <Link href={`/room/${id}/reportDetail`} asChild>
-                <Text style={styles.itemText}>
-                  {reason.label}
-
-                  <Entypo
-                    name="chevron-small-right"
-                    size={24}
-                    color="#CBD5E1"
-                  />
-                </Text>
-              </Link>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-export default report;
+export default ReportScreen;
 
 const styles = StyleSheet.create({
   headerTopBar: {
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+    marginRight: 24, // Offset for the cross icon to center the title
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0f172a",
   },
   groupCard: {
     backgroundColor: "white",
@@ -159,21 +112,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
-    paddingVertical: 15,
+    paddingVertical: 20,
+  },
+  infoSection: {
+    marginBottom: 10,
+  },
+  infoDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#64748b",
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1e293b",
   },
   listContainer: {
     marginTop: 10,
-    width: "100%",
   },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 16,
     minHeight: 56,
   },
+  borderBottom: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
   itemText: {
-    marginLeft: 12,
     fontSize: 16,
     fontWeight: "500",
     color: "#334155",

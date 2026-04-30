@@ -36,6 +36,8 @@ interface Room {
   unreadCount?: number;
   updatedAt: string;
   participants: Participant[];
+  isRevealed?: boolean;
+  status?: string;
 }
 
 const chat = () => {
@@ -51,30 +53,29 @@ const chat = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const getRemainingTime = (lastActiveAt: string) => {
-    if (!lastActiveAt) return "just";
+    if (!lastActiveAt) return "OFF";
 
     const lastActive = new Date(lastActiveAt).getTime();
-    if (isNaN(lastActive)) return "just";
+    if (isNaN(lastActive)) return "OFF";
 
     const now = new Date().getTime();
     const diff = now - lastActive;
 
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
 
-    if (seconds < 60) return "just";
+    if (seconds < 60) return "ON";
+
     if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
+    if (Math.floor(minutes / 60) < 24) return `${Math.floor(minutes / 60)}h`;
+    return `${Math.floor(minutes / 1440)}d`;
   };
 
   const fetchRooms = async () => {
     try {
       setLoading(true);
       const response = await axios.get("/chatroom");
-      console.log("chat room response", response);
+      //console.log("chat room response", response);
       if (response.data.currentUserId) {
         setCurrentUserId(response.data.currentUserId);
       }
@@ -97,10 +98,12 @@ const chat = () => {
   );
 
   useEffect(() => {
-    const socket = getSocket();
+    if (!currentUserId) return;
+
+    const socket = getSocket(currentUserId);
 
     socket.on("update_chat_list", (data) => {
-      console.log("Socket Data Received:", data);
+      //console.log("Socket Data Received:", data);
 
       setRooms((prevRooms) => {
         const roomIndex = prevRooms.findIndex((r) => r.roomId === data.roomId);
@@ -111,23 +114,22 @@ const chat = () => {
         }
 
         const updatedRooms = [...prevRooms];
-        //const targetRoom = updatedRooms[roomIndex];
         const targetRoom = { ...updatedRooms[roomIndex] };
+        const me = currentUserId ? String(currentUserId) : null;
 
-        //const isNewMessageFromOther = data.senderId !== currentUserId;
         const isNewMessageFromOther =
-          String(data.senderId) !== String(currentUserId);
-        const increment = data.incrementUnread === true;
+          me !== null && String(data.senderId) !== me;
 
+        // const increment =
+        //   data.incrementUnread === true && isNewMessageFromOther;
+        //console.log("front data.unreadCount", data.unreadCount);
         updatedRooms[roomIndex] = {
           ...targetRoom,
           lastMessage: data.lastMessage,
           lastMessageIsRead: data.isRead,
           lastMessageSenderId: data.senderId,
 
-          unreadCount: increment
-            ? (targetRoom.unreadCount || 0) + 1
-            : targetRoom.unreadCount || 0,
+          unreadCount: data.unreadCount ?? 0,
 
           updatedAt: data.updatedAt,
         };
@@ -140,7 +142,7 @@ const chat = () => {
     });
 
     socket.on("messages_read", ({ roomId, userId }) => {
-      if (userId !== currentUserId) {
+      if (String(userId) !== String(currentUserId)) {
         setRooms((prev) =>
           prev.map((r) =>
             r.roomId === roomId ? { ...r, lastMessageIsRead: true } : r,
@@ -157,9 +159,35 @@ const chat = () => {
       }
     });
 
+    socket.on(
+      "user_status_changed",
+      (data: { userId: string; status: string; lastLogin: string }) => {
+        //console.log("📡 Status Update Received:", data);
+
+        setRooms((prevRooms) => {
+          return prevRooms.map((room) => {
+            const other = (room as any).otherParticipant;
+
+            if (other && String(other.firebaseUid) === String(data.userId)) {
+              return {
+                ...room,
+                otherParticipant: {
+                  ...other,
+                  isOnline: data.status === "online",
+                  lastLogin: data.lastLogin,
+                },
+              };
+            }
+            return room;
+          });
+        });
+      },
+    );
+
     return () => {
       socket.off("update_chat_list");
       socket.off("messages_read");
+      socket.off("user_status_changed");
     };
   }, [currentUserId]);
 
@@ -173,7 +201,7 @@ const chat = () => {
         targetId: testUserObjectId,
         matchId: mockMatchId,
       });
-      console.log("createTestChatRoom response", response);
+      //console.log("createTestChatRoom response", response);
       if (response.data) {
         Alert.alert("Success", "Test chat room has been created.");
         fetchRooms();
@@ -186,11 +214,11 @@ const chat = () => {
 
   const createTripleTestRooms = async () => {
     try {
-      const myId = "CFYJpRsHtafu8TKEmIxCjeygTSC2"; // Reference Account (Me)
+      const myId = "4GzzMYQMEdNvfMimeEAIqIEqjKD2"; // Reference Account (Me)
       const targetIds = [
-        "uCgN2uEfq1ZgvTAYqQ60iyVxK4u1",
-        "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
-        "qxLtr5RqApbDDBvr5OTifLA70P33",
+        "69f1a4ab4554e6e31aace52a",
+        // "Geaqkm1gc9YhZtqQFKdA5RHWE3m1",
+        // "qxLtr5RqApbDDBvr5OTifLA70P33",
       ];
 
       for (const targetId of targetIds) {
@@ -198,10 +226,10 @@ const chat = () => {
           targetId: targetId, // Recipient
           matchId: myId, // Requester (Me)
         });
-        console.log(
-          `Chat room created successfully with: ${targetId}`,
-          response.data,
-        );
+        // console.log(
+        //   `Chat room created successfully with: ${targetId}`,
+        //   response.data,
+        // );
       }
 
       Alert.alert("Success", "Three test chat rooms have been created.");
@@ -335,28 +363,47 @@ const chat = () => {
 
               const other = (room as any).otherParticipant;
               const me = (room as any).me;
+              //console.log("other:::", other);
 
               if (!other) return null;
+
+              //const isRevealed = other.isRevealed;
+              //const isRevealed = (room as any).isRevealed;
+              const isRevealed = room.isRevealed || false;
+              //console.log("isRevealed::", isRevealed);
 
               const otherParticipant = room.participants.find(
                 (p) => String(p.firebaseUid) !== String(currentUserId),
               );
 
-              console.log(
-                "Other Participant Gender:",
-                otherParticipant?.gender,
-              );
-
-              const getProfileImage = (gender?: string) => {
-                if (gender === "Female") {
-                  return require("@/assets/images/girl-profile.png");
+              const getProfileImage = () => {
+                if (isRevealed && other.profileImage) {
+                  const imageUrl = other.profileImage.startsWith("http")
+                    ? other.profileImage
+                    : `${axios.defaults.baseURL}/uploads/${other.profileImage}`;
+                  return { uri: imageUrl };
                 }
-                return require("@/assets/images/man-profile-gray.png");
+                return other.gender === "Female"
+                  ? require("@/assets/images/girl-profile.png")
+                  : require("@/assets/images/man-profile-gray.png");
               };
 
-              const displayTime = otherParticipant?.lastLogin
-                ? getRemainingTime(otherParticipant.lastLogin)
-                : getRemainingTime(room.updatedAt);
+              // const displayTime = otherParticipant?.lastLogin
+              //   ? getRemainingTime(otherParticipant.lastLogin)
+              //   : getRemainingTime(room.updatedAt);
+              const displayTime = other.lastLogin
+                ? getRemainingTime(other.lastLogin)
+                : "OFF";
+              const isOnline = other.isOnline === true;
+              // console.log("isOnline", isOnline);
+              // console.log(
+              //   `Room: ${room.roomId}, LastLogin: ${other.lastLogin}, Result: ${displayTime}`,
+              // );
+
+              const displayName = isRevealed
+                ? `${other.fullName.first} ${other.fullName.last || ""} (${other.mbtiType})`
+                : other.mbtiType; // temporary
+              //: other.mbtiType;
 
               const targetMbti =
                 otherParticipant?.mbtiType ||
@@ -365,10 +412,10 @@ const chat = () => {
 
               const myMbti = me?.mbtiType || (me as any)?.mbti || "ENFP";
 
-              console.log("console.log(room.participants)", room.participants);
+              //console.log("console.log(room.participants)", room.participants);
 
-              const synergyScore = calculateSynergy(myMbti, targetMbti);
-
+              const synergyScore = calculateSynergy(myMbti, other.mbtiType);
+              //console.log("other", other);
               return (
                 <Pressable
                   key={room._id}
@@ -380,37 +427,50 @@ const chat = () => {
                   <View className="relative w-16 h-16">
                     <View className="w-16 h-16 bg-slate-200 rounded-full overflow-hidden">
                       <Image
-                        source={getProfileImage(otherParticipant?.gender)}
+                        source={getProfileImage(other)}
                         style={styles.profileImg}
                       />
                     </View>
-                    <View style={styles.timeBadge}>
-                      <Text
+                    {isOnline ? (
+                      <View
                         style={{
-                          color: "white",
-                          fontSize: 10,
-                          fontWeight: "800",
-                          includeFontPadding: false,
-                          textAlignVertical: "center",
+                          position: "absolute",
+                          bottom: 2,
+                          right: 2,
+                          width: 14,
+                          height: 14,
+                          borderRadius: 7,
+                          backgroundColor: "#22C55E",
+                          borderWidth: 2,
+                          borderColor: "white",
                         }}
-                      >
-                        {/*getRemainingTime(room.updatedAt)*/}
-                        {displayTime}
-                      </Text>
-                    </View>
+                      />
+                    ) : (
+                      <View style={styles.timeBadge}>
+                        <Text
+                          style={{
+                            color: "white",
+                            fontSize: 10,
+                            fontWeight: "800",
+                          }}
+                        >
+                          {displayTime}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View className="flex-1 ml-4 justify-center">
                     <View className="flex-row items-center justify-between mb-1">
                       <View className="flex-row items-center">
                         <Text className="text-xl font-bold text-slate-800 mr-2">
-                          {other?.fullName?.first
-                            ? `${other.fullName.first} ${other.fullName.last || ""}`
-                            : other.mbtiType}
+                          {displayName}
                         </Text>
+                        {/*
                         <Text className="text-xl font-bold text-slate-800 mr-2">
                           {other.mbtiType}
                         </Text>
+                        */}
                         <View className="bg-green-100 px-2 py-0.5 rounded-full">
                           <Text className="text-green-600 text-[10px] font-bold">
                             {synergyScore}%

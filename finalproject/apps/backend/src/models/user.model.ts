@@ -23,8 +23,8 @@ export interface IUser extends Document {
   isDeleted: boolean;
   deletedAt?: Date | null;
   location: {
-    type: { type: String; enum: ["Point"]; default: "Point" };
-    coordinates: { type: [Number]; default: [0, 0] };
+    type: string;
+    coordinates: number[];
   };
   preferredDistance: { type: Number; default: 10 };
   mbtiTestchecked: boolean;
@@ -37,6 +37,8 @@ export interface IUser extends Document {
     enum: ["Male", "Female", "Other", "All"];
     default: "All";
   };
+  isOnline: { type: Boolean; default: false };
+  lastActive: { type: Date; default: Date };
 }
 
 const UserSchema = new Schema<IUser>(
@@ -86,7 +88,10 @@ const UserSchema = new Schema<IUser>(
     },
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], default: [0, 0] },
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+      },
     },
     preferredAgeRange: {
       min: { type: Number, default: 18 },
@@ -99,7 +104,10 @@ const UserSchema = new Schema<IUser>(
       default: "All",
     },
     mbtiTestchecked: { type: Boolean, default: false },
+    isOnline: { type: Boolean, default: false },
+    lastActive: { type: Date, default: Date.now },
   },
+
   { timestamps: true },
 );
 
